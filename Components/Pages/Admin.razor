@@ -5,6 +5,7 @@
 @using SystemAll.Services
 @inject NavigationManager Nav
 @inject AdminService AdminSvc
+@inject EngTeamService TeamSvc
 @inject ISnackbar Snackbar
 
 <PageTitle>Admin — ENG4 System</PageTitle>
@@ -36,6 +37,16 @@
                 @if (_pending.Count > 0)
                 {
                     <span class="admin-nav-badge">@_pending.Count</span>
+                }
+            </div>
+
+            <div class="admin-nav-item @(_activeMenu == "engteam" ? "active" : "")"
+                 @onclick="OpenEngTeamTab">
+                <MudIcon Icon="@Icons.Material.Filled.Groups" Style="font-size:20px;" />
+                <span>ENG3,4 Team</span>
+                @if (NoTeamCount > 0)
+                {
+                    <span class="admin-nav-badge" title="ยังไม่มี Team">@NoTeamCount</span>
                 }
             </div>
 
@@ -195,6 +206,83 @@
                             </MudTd>
                         </RowTemplate>
                     </MudTable>
+                }
+            }
+            else if (_activeMenu == "engteam")
+            {
+                <div class="admin-page-head">
+                    <h2>รายชื่อพนักงาน ENG3,4</h2>
+                    <div style="display:flex; gap:8px;">
+                        <MudButton StartIcon="@Icons.Material.Filled.ManageAccounts" Size="Size.Small"
+                                   Variant="Variant.Filled" Style="background:#8b57b8; color:#fff;"
+                                   OnClick="OpenManageTeam">
+                            Manage Team ENG3,4
+                        </MudButton>
+                        <MudButton StartIcon="@Icons.Material.Filled.Refresh" Size="Size.Small"
+                                   OnClick="LoadTeamData">รีเฟรช</MudButton>
+                    </div>
+                </div>
+
+                <!-- Filter -->
+                <div class="team-filter">
+                    <MudTextField T="string" @bind-Value="_empFilter" Label="ค้นหา Emp ID"
+                                  Variant="Variant.Outlined" Margin="Margin.Dense"
+                                  Immediate="true" DebounceInterval="250" Clearable="true"
+                                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                                  Style="max-width:260px;" />
+                    <MudSwitch T="bool" @bind-Value="_onlyNoTeam" Color="Color.Warning"
+                               Label="@($"เฉพาะคนที่ยังไม่มี Team ({NoTeamCount})")" />
+                    <div class="team-count">
+                        แสดง <b>@FilteredMembers.Count</b> / @_members.Count คน
+                    </div>
+                </div>
+
+                @if (_teamLoading)
+                {
+                    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+                }
+                else if (FilteredMembers.Count == 0)
+                {
+                    <div class="admin-empty">
+                        <MudIcon Icon="@Icons.Material.Outlined.PersonSearch" Style="font-size:48px; color:#90A4AE;" />
+                        <p>@(_members.Count == 0 ? "ไม่พบพนักงาน ENG3,4" : "ไม่พบรายชื่อตามเงื่อนไข")</p>
+                    </div>
+                }
+                else
+                {
+                    <MudTable Items="FilteredMembers" Hover="true" Dense="true" Bordered="true"
+                              T="EngMemberDto" RowStyle="cursor:pointer;"
+                              OnRowClick="@((TableRowClickEventArgs<EngMemberDto> e) => OpenAssign(e.Item))">
+                        <HeaderContent>
+                            <MudTh Style="width:110px;">Emp ID</MudTh>
+                            <MudTh>ชื่อ-สกุล</MudTh>
+                            <MudTh>Position</MudTh>
+                            <MudTh Style="width:80px; text-align:center;">Dept</MudTh>
+                            <MudTh Style="width:200px;">Team</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Emp ID">@context.EmpId</MudTd>
+                            <MudTd DataLabel="ชื่อ-สกุล">
+                                <div style="font-weight:600; color:#263238;">@context.FullName</div>
+                                <div style="font-size:11px; color:#90A4AE;">@context.UserName</div>
+                            </MudTd>
+                            <MudTd DataLabel="Position">@context.Position</MudTd>
+                            <MudTd DataLabel="Dept" Style="text-align:center;">
+                                <span class="dept-tag @(context.DeptLabel == "ENG3" ? "dept-eng3" : "dept-eng4")">@context.DeptLabel</span>
+                            </MudTd>
+                            <MudTd DataLabel="Team">
+                                @if (context.TeamId == null)
+                                {
+                                    <span class="team-chip team-none">ยังไม่มี Team</span>
+                                }
+                                else
+                                {
+                                    <span class="team-chip">@context.TeamName</span>
+                                }
+                            </MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                    <div class="team-hint">คลิกที่รายชื่อเพื่อเพิ่ม / แก้ไข Team</div>
                 }
             }
         </div>
@@ -473,6 +561,95 @@
         font-size: 13px;
         color: #455A64;
     }
+
+    /* ===== ENG3,4 Team ===== */
+    .team-filter {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 20px;
+        margin-bottom: 16px;
+    }
+
+    .team-count {
+        margin-left: auto;
+        font-size: 13px;
+        color: #78909C;
+    }
+
+    .team-hint {
+        font-size: 12px;
+        color: #90A4AE;
+        margin-top: 8px;
+    }
+
+    .team-chip {
+        display: inline-block;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 3px 10px;
+        border-radius: 8px;
+        background: #F3E5F5;
+        color: #6a3d94;
+    }
+
+        .team-chip.team-none {
+            background: #FFF3E0;
+            color: #E65100;
+        }
+
+    .dept-tag {
+        font-size: 11px;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 6px;
+    }
+
+    .dept-eng3 { background: #E3F2FD; color: #1565C0; }
+    .dept-eng4 { background: #E8F5E9; color: #2e7d32; }
+
+    .mt-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        max-height: 360px;
+        overflow-y: auto;
+        margin-bottom: 16px;
+    }
+
+    .mt-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border: 1px solid #ECEFF1;
+        border-radius: 10px;
+    }
+
+        .mt-row.confirm {
+            border-color: #ef9a9a;
+            background: #FFEBEE;
+        }
+
+    .mt-name {
+        flex: 1;
+        font-weight: 600;
+        color: #37474F;
+    }
+
+    .mt-count {
+        font-size: 12px;
+        color: #78909C;
+        white-space: nowrap;
+    }
+
+    .mt-add {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding-top: 12px;
+        border-top: 1px dashed #CFD8DC;
+    }
 </style>
 
 <!-- Approve Summary Modal -->
@@ -522,7 +699,135 @@
     </DialogActions>
 </MudDialog>
 
+<!-- Assign Team Modal (คลิกที่รายชื่อ) -->
+<MudDialog @bind-Visible="_assignVisible" Options="_dlgOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.GroupAdd" Class="mr-2" />กำหนด Team
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_assignUser != null)
+        {
+            <div class="approve-summary">
+                <div class="summary-row"><span class="summary-label">ชื่อ-สกุล</span><span>@_assignUser.FullName</span></div>
+                <div class="summary-row"><span class="summary-label">รหัสพนักงาน</span><span>@_assignUser.EmpId</span></div>
+                <div class="summary-row"><span class="summary-label">Dept</span><span>@_assignUser.DeptLabel (@_assignUser.DeptCode)</span></div>
+                <div class="summary-row">
+                    <span class="summary-label">Team ปัจจุบัน</span>
+                    <span>@(_assignUser.TeamName ?? "ยังไม่มี Team")</span>
+                </div>
+
+                @if (_teams.Count == 0)
+                {
+                    <div class="summary-note">
+                        <MudIcon Icon="@Icons.Material.Filled.Info" Style="font-size:16px; color:#1565C0;" />
+                        ยังไม่มี Team — กด "Manage Team ENG3,4" เพื่อเพิ่ม Team ก่อน
+                    </div>
+                }
+                else
+                {
+                    <MudSelect T="int" @bind-Value="_assignTeamId" Label="เลือก Team"
+                               Variant="Variant.Outlined" Margin="Margin.Dense" Class="mt-2">
+                        <MudSelectItem T="int" Value="0">— ไม่มี Team —</MudSelectItem>
+                        @foreach (var t in _teams)
+                        {
+                            <MudSelectItem T="int" Value="@t.TeamId">@t.TeamName</MudSelectItem>
+                        }
+                    </MudSelect>
+                }
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _assignVisible = false)">ยกเลิก</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                   OnClick="SaveAssign" Disabled="@(_assignSaving || _teams.Count == 0)">
+            @if (_assignSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            บันทึก
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<!-- Manage Team Modal -->
+<MudDialog @bind-Visible="_manageVisible" Options="_dlgOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.ManageAccounts" Class="mr-2" />Manage Team ENG3,4
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_teams.Count == 0)
+        {
+            <div class="admin-empty" style="padding:24px;">ยังไม่มี Team</div>
+        }
+        else
+        {
+            <div class="mt-list">
+                @foreach (var t in _teams)
+                {
+                    if (_editTeamId == t.TeamId)
+                    {
+                        <div class="mt-row">
+                            <MudTextField T="string" @bind-Value="_editTeamName" Variant="Variant.Outlined"
+                                          Margin="Margin.Dense" Immediate="true" MaxLength="100"
+                                          Style="flex:1;" AutoFocus="true" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Check" Color="Color.Success" Size="Size.Small"
+                                           Disabled="_teamBusy" OnClick="@(() => SaveRename(t.TeamId))" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                                           OnClick="@(() => _editTeamId = null)" />
+                        </div>
+                    }
+                    else if (_confirmDeleteId == t.TeamId)
+                    {
+                        <div class="mt-row confirm">
+                            <span class="mt-name" style="color:#c62828;">
+                                ลบ "@t.TeamName" ?
+                                @if (t.MemberCount > 0)
+                                {
+                                    <span style="font-weight:400; font-size:12px;"> — สมาชิก @t.MemberCount คนจะถูกเอาออกจาก Team</span>
+                                }
+                            </span>
+                            <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Error"
+                                       Disabled="_teamBusy" OnClick="@(() => ConfirmDelete(t.TeamId))">ยืนยันลบ</MudButton>
+                            <MudButton Size="Size.Small" OnClick="@(() => _confirmDeleteId = null)">ยกเลิก</MudButton>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="mt-row">
+                            <MudIcon Icon="@Icons.Material.Filled.Groups" Style="font-size:18px; color:#8b57b8;" />
+                            <span class="mt-name">@t.TeamName</span>
+                            <span class="mt-count">@t.MemberCount คน</span>
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary"
+                                           OnClick="@(() => StartRename(t))" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                           OnClick="@(() => { _editTeamId = null; _confirmDeleteId = t.TeamId; })" />
+                        </div>
+                    }
+                }
+            </div>
+        }
+
+        <div class="mt-add">
+            <MudTextField T="string" @bind-Value="_newTeamName" Label="ชื่อ Team ใหม่"
+                          Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true"
+                          MaxLength="100" Style="flex:1;" OnKeyUp="NewTeamKeyUp" />
+            <MudButton Variant="Variant.Filled" Color="Color.Success" StartIcon="@Icons.Material.Filled.Add"
+                       Disabled="@(_teamBusy || string.IsNullOrWhiteSpace(_newTeamName))"
+                       OnClick="AddTeam">เพิ่ม</MudButton>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _manageVisible = false)">ปิด</MudButton>
+    </DialogActions>
+</MudDialog>
+
 @code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
     private string _activeMenu = "newuser";
     private bool _loading = true;
     private List<PendingRequestDto> _pending = new();
@@ -542,7 +847,11 @@
     private bool _selectAll = false;
     private bool _bulkSyncing = false;
 
-    protected override async Task OnInitializedAsync() => await LoadData();
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+        await LoadTeamData();   // โหลดไว้เพื่อแสดง badge "ยังไม่มี Team"
+    }
 
     private async Task LoadData()
     {
@@ -666,5 +975,179 @@
         }
         catch { Snackbar.Add("อัปเดตไม่สำเร็จ", Severity.Error); }
         finally { _bulkSyncing = false; }
+    }
+
+    // ============================================================
+    //  ENG3,4 Team
+    // ============================================================
+    private List<EngMemberDto> _members = new();
+    private List<EngTeamDto> _teams = new();
+    private bool _teamLoading = false;
+    private string? _empFilter;
+    private bool _onlyNoTeam = false;
+
+    private int NoTeamCount => _members.Count(m => m.TeamId == null);
+
+    private List<EngMemberDto> FilteredMembers => _members
+        .Where(m => !_onlyNoTeam || m.TeamId == null)
+        .Where(m => string.IsNullOrWhiteSpace(_empFilter)
+                 || m.EmpId.Contains(_empFilter.Trim(), StringComparison.OrdinalIgnoreCase))
+        .ToList();
+
+    // Assign
+    private bool _assignVisible = false;
+    private bool _assignSaving = false;
+    private EngMemberDto? _assignUser;
+    private int _assignTeamId;   // 0 = ไม่มี Team
+
+    // Manage
+    private bool _manageVisible = false;
+    private bool _teamBusy = false;
+    private string? _newTeamName;
+    private int? _editTeamId;
+    private string? _editTeamName;
+    private int? _confirmDeleteId;
+
+    private async Task<string?> CurrentUserAsync()
+    {
+        if (AuthState == null) return null;
+        var state = await AuthState;
+        return state.User.Identity?.Name;
+    }
+
+    private async Task OpenEngTeamTab()
+    {
+        _activeMenu = "engteam";
+        if (_members.Count == 0 && !_teamLoading)
+            await LoadTeamData();
+    }
+
+    private async Task LoadTeamData()
+    {
+        _teamLoading = true;
+        try
+        {
+            _members = await TeamSvc.GetMembersAsync();
+            _teams = await TeamSvc.GetTeamsAsync();
+        }
+        catch { Snackbar.Add("โหลดข้อมูล Team ไม่สำเร็จ", Severity.Error); }
+        finally { _teamLoading = false; }
+    }
+
+    private async Task ReloadTeamsOnly()
+    {
+        _teams = await TeamSvc.GetTeamsAsync();
+    }
+
+    // ----- คลิกรายชื่อ → เพิ่ม/แก้ไข Team -----
+    private void OpenAssign(EngMemberDto? m)
+    {
+        if (m == null) return;
+        _assignUser = m;
+        _assignTeamId = m.TeamId ?? 0;
+        _assignVisible = true;
+    }
+
+    private async Task SaveAssign()
+    {
+        if (_assignUser == null) return;
+        int? newTeam = _assignTeamId == 0 ? null : _assignTeamId;
+
+        if (newTeam == _assignUser.TeamId)
+        {
+            _assignVisible = false;
+            return;
+        }
+
+        _assignSaving = true;
+        try
+        {
+            var ok = await TeamSvc.SetUserTeamAsync(_assignUser.UserName, newTeam);
+            if (ok)
+            {
+                // อัปเดตในหน้าทันที ไม่ต้องโหลดใหม่ทั้งหมด
+                _assignUser.TeamId = newTeam;
+                _assignUser.TeamName = _teams.FirstOrDefault(t => t.TeamId == newTeam)?.TeamName;
+                Snackbar.Add($"บันทึก Team ของ {_assignUser.FullName} แล้ว", Severity.Success);
+                _assignVisible = false;
+                await ReloadTeamsOnly();   // จำนวนสมาชิกใน Manage Team
+            }
+            else Snackbar.Add("บันทึกไม่สำเร็จ (อาจมีการลบ Team ไปแล้ว)", Severity.Error);
+        }
+        catch { Snackbar.Add("เกิดข้อผิดพลาด", Severity.Error); }
+        finally { _assignSaving = false; }
+    }
+
+    // ----- Manage Team -----
+    private async Task OpenManageTeam()
+    {
+        _newTeamName = null;
+        _editTeamId = null;
+        _confirmDeleteId = null;
+        _manageVisible = true;
+        try { await ReloadTeamsOnly(); }
+        catch { Snackbar.Add("โหลดรายการ Team ไม่สำเร็จ", Severity.Error); }
+    }
+
+    private async Task NewTeamKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(_newTeamName))
+            await AddTeam();
+    }
+
+    private async Task AddTeam()
+    {
+        if (_teamBusy || string.IsNullOrWhiteSpace(_newTeamName)) return;
+        _teamBusy = true;
+        try
+        {
+            var (ok, msg) = await TeamSvc.AddTeamAsync(_newTeamName, await CurrentUserAsync());
+            Snackbar.Add(msg, ok ? Severity.Success : Severity.Warning);
+            if (ok)
+            {
+                _newTeamName = null;
+                await ReloadTeamsOnly();
+            }
+        }
+        catch { Snackbar.Add("เพิ่ม Team ไม่สำเร็จ", Severity.Error); }
+        finally { _teamBusy = false; }
+    }
+
+    private void StartRename(EngTeamDto t)
+    {
+        _confirmDeleteId = null;
+        _editTeamId = t.TeamId;
+        _editTeamName = t.TeamName;
+    }
+
+    private async Task SaveRename(int teamId)
+    {
+        _teamBusy = true;
+        try
+        {
+            var (ok, msg) = await TeamSvc.RenameTeamAsync(teamId, _editTeamName ?? "", await CurrentUserAsync());
+            Snackbar.Add(msg, ok ? Severity.Success : Severity.Warning);
+            if (ok)
+            {
+                _editTeamId = null;
+                await LoadTeamData();   // ชื่อ Team ในตารางรายชื่อเปลี่ยนด้วย
+            }
+        }
+        catch { Snackbar.Add("แก้ไขชื่อ Team ไม่สำเร็จ", Severity.Error); }
+        finally { _teamBusy = false; }
+    }
+
+    private async Task ConfirmDelete(int teamId)
+    {
+        _teamBusy = true;
+        try
+        {
+            var (ok, msg) = await TeamSvc.DeleteTeamAsync(teamId);
+            Snackbar.Add(msg, ok ? Severity.Success : Severity.Warning);
+            _confirmDeleteId = null;
+            await LoadTeamData();   // สมาชิกที่ถูกเอาออกจะกลายเป็น "ยังไม่มี Team"
+        }
+        catch { Snackbar.Add("ลบ Team ไม่สำเร็จ", Severity.Error); }
+        finally { _teamBusy = false; }
     }
 }
