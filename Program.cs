@@ -70,6 +70,7 @@ builder.Services.AddHttpClient();
 builder.Services.AddScoped<HrmsService>();
 builder.Services.AddScoped<RegisterService>();
 builder.Services.AddScoped<AdminService>();
+builder.Services.AddScoped<EngTeamService>();
 
 var app = builder.Build();
 
