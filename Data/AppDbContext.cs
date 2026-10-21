@@ -16,6 +16,7 @@ public class AppDbContext : DbContext
     public DbSet<PasswordResetOtp> PasswordResetOtps => Set<PasswordResetOtp>();
     public DbSet<SystemListAll> SystemListAlls => Set<SystemListAll>();
     public DbSet<DeptMaster> DeptMasters => Set<DeptMaster>();
+    public DbSet<EngTeamMaster> EngTeamMasters => Set<EngTeamMaster>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -76,6 +77,13 @@ public class AppDbContext : DbContext
         {
             entity.ToTable("Dept_master");
             entity.HasKey(e => e.DeptId);
+        });
+
+        modelBuilder.Entity<EngTeamMaster>(entity =>
+        {
+            entity.ToTable("eng_team_master");
+            entity.HasKey(e => e.TeamId);
+            entity.Property(e => e.TeamId).ValueGeneratedOnAdd();
         });
     }
 }
