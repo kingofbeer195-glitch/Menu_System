@@ -45,10 +45,6 @@ public class SysUserMaster
     [Column("eng_group_id")]
     public int? EngGroupId { get; set; }
 
-    // Team ENG3,4 → eng_team_master.team_id (NULL = ยังไม่มี Team)
-    [Column("eng_team_id")]
-    public int? EngTeamId { get; set; }
-
     [Column("position_id")]
     public int? PositionId { get; set; }
 

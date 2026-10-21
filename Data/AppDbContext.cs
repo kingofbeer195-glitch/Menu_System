@@ -17,6 +17,7 @@ public class AppDbContext : DbContext
     public DbSet<SystemListAll> SystemListAlls => Set<SystemListAll>();
     public DbSet<DeptMaster> DeptMasters => Set<DeptMaster>();
     public DbSet<EngTeamMaster> EngTeamMasters => Set<EngTeamMaster>();
+    public DbSet<EngTeamMember> EngTeamMembers => Set<EngTeamMember>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -84,6 +85,12 @@ public class AppDbContext : DbContext
             entity.ToTable("eng_team_master");
             entity.HasKey(e => e.TeamId);
             entity.Property(e => e.TeamId).ValueGeneratedOnAdd();
+        });
+
+        modelBuilder.Entity<EngTeamMember>(entity =>
+        {
+            entity.ToTable("eng_team_member");
+            entity.HasKey(e => new { e.UserName, e.TeamId });
         });
     }
 }

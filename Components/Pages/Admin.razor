@@ -258,7 +258,7 @@
                             <MudTh>ชื่อ-สกุล</MudTh>
                             <MudTh>Position</MudTh>
                             <MudTh Style="width:80px; text-align:center;">Dept</MudTh>
-                            <MudTh Style="width:200px;">Team</MudTh>
+                            <MudTh Style="min-width:200px;">Team</MudTh>
                         </HeaderContent>
                         <RowTemplate>
                             <MudTd DataLabel="Emp ID">@context.EmpId</MudTd>
@@ -271,13 +271,18 @@
                                 <span class="dept-tag @(context.DeptLabel == "ENG3" ? "dept-eng3" : "dept-eng4")">@context.DeptLabel</span>
                             </MudTd>
                             <MudTd DataLabel="Team">
-                                @if (context.TeamId == null)
+                                @if (!context.HasTeam)
                                 {
                                     <span class="team-chip team-none">ยังไม่มี Team</span>
                                 }
                                 else
                                 {
-                                    <span class="team-chip">@context.TeamName</span>
+                                    <div class="team-chips">
+                                        @foreach (var t in context.Teams)
+                                        {
+                                            <span class="team-chip">@t.TeamName</span>
+                                        }
+                                    </div>
                                 }
                             </MudTd>
                         </RowTemplate>
@@ -598,6 +603,38 @@
             color: #E65100;
         }
 
+    .team-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+
+    .assign-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 4px;
+    }
+
+    .assign-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 6px;
+        max-height: 280px;
+        overflow-y: auto;
+    }
+
+    .assign-item {
+        border: 1px solid #ECEFF1;
+        border-radius: 8px;
+        padding: 0 6px;
+    }
+
+        .assign-item.on {
+            border-color: #8b57b8;
+            background: #F5F0FA;
+        }
+
     .dept-tag {
         font-size: 11px;
         font-weight: 700;
@@ -715,7 +752,7 @@
                 <div class="summary-row"><span class="summary-label">Dept</span><span>@_assignUser.DeptLabel (@_assignUser.DeptCode)</span></div>
                 <div class="summary-row">
                     <span class="summary-label">Team ปัจจุบัน</span>
-                    <span>@(_assignUser.TeamName ?? "ยังไม่มี Team")</span>
+                    <span>@(_assignUser.HasTeam ? string.Join(", ", _assignUser.Teams.Select(t => t.TeamName)) : "ยังไม่มี Team")</span>
                 </div>
 
                 @if (_teams.Count == 0)
@@ -727,14 +764,29 @@
                 }
                 else
                 {
-                    <MudSelect T="int" @bind-Value="_assignTeamId" Label="เลือก Team"
-                               Variant="Variant.Outlined" Margin="Margin.Dense" Class="mt-2">
-                        <MudSelectItem T="int" Value="0">— ไม่มี Team —</MudSelectItem>
+                    <div class="assign-head">
+                        <span class="summary-label">เลือก Team (เลือกได้มากกว่า 1)</span>
+                        <span class="mt-count">เลือก @_assignTeamIds.Count Team</span>
+                    </div>
+                    <div class="assign-list">
                         @foreach (var t in _teams)
                         {
-                            <MudSelectItem T="int" Value="@t.TeamId">@t.TeamName</MudSelectItem>
+                            var id = t.TeamId;
+                            <div class="assign-item @(_assignTeamIds.Contains(id) ? "on" : "")">
+                                <MudCheckBox T="bool" Value="@_assignTeamIds.Contains(id)"
+                                             ValueChanged="@(v => ToggleAssignTeam(id, v))"
+                                             Dense="true" Color="Color.Primary" Label="@t.TeamName" />
+                            </div>
                         }
-                    </MudSelect>
+                    </div>
+                    @if (_assignTeamIds.Count > 0)
+                    {
+                        <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Error"
+                                   StartIcon="@Icons.Material.Filled.ClearAll"
+                                   OnClick="@(() => _assignTeamIds.Clear())" Style="align-self:flex-start;">
+                            เอาออกจากทุก Team
+                        </MudButton>
+                    }
                 }
             </div>
         }
@@ -986,10 +1038,10 @@
     private string? _empFilter;
     private bool _onlyNoTeam = false;
 
-    private int NoTeamCount => _members.Count(m => m.TeamId == null);
+    private int NoTeamCount => _members.Count(m => !m.HasTeam);
 
     private List<EngMemberDto> FilteredMembers => _members
-        .Where(m => !_onlyNoTeam || m.TeamId == null)
+        .Where(m => !_onlyNoTeam || !m.HasTeam)
         .Where(m => string.IsNullOrWhiteSpace(_empFilter)
                  || m.EmpId.Contains(_empFilter.Trim(), StringComparison.OrdinalIgnoreCase))
         .ToList();
@@ -998,7 +1050,7 @@
     private bool _assignVisible = false;
     private bool _assignSaving = false;
     private EngMemberDto? _assignUser;
-    private int _assignTeamId;   // 0 = ไม่มี Team
+    private HashSet<int> _assignTeamIds = new();   // ว่าง = ไม่มี Team
 
     // Manage
     private bool _manageVisible = false;
@@ -1039,21 +1091,27 @@
         _teams = await TeamSvc.GetTeamsAsync();
     }
 
-    // ----- คลิกรายชื่อ → เพิ่ม/แก้ไข Team -----
+    // ----- คลิกรายชื่อ → เพิ่ม/แก้ไข Team (เลือกได้หลาย Team) -----
     private void OpenAssign(EngMemberDto? m)
     {
         if (m == null) return;
         _assignUser = m;
-        _assignTeamId = m.TeamId ?? 0;
+        _assignTeamIds = m.Teams.Select(t => t.TeamId).ToHashSet();
         _assignVisible = true;
+    }
+
+    private void ToggleAssignTeam(int teamId, bool on)
+    {
+        if (on) _assignTeamIds.Add(teamId);
+        else _assignTeamIds.Remove(teamId);
     }
 
     private async Task SaveAssign()
     {
         if (_assignUser == null) return;
-        int? newTeam = _assignTeamId == 0 ? null : _assignTeamId;
 
-        if (newTeam == _assignUser.TeamId)
+        var before = _assignUser.Teams.Select(t => t.TeamId).ToHashSet();
+        if (before.SetEquals(_assignTeamIds))
         {
             _assignVisible = false;
             return;
@@ -1062,12 +1120,15 @@
         _assignSaving = true;
         try
         {
-            var ok = await TeamSvc.SetUserTeamAsync(_assignUser.UserName, newTeam);
+            var ok = await TeamSvc.SetUserTeamsAsync(_assignUser.UserName, _assignTeamIds, await CurrentUserAsync());
             if (ok)
             {
                 // อัปเดตในหน้าทันที ไม่ต้องโหลดใหม่ทั้งหมด
-                _assignUser.TeamId = newTeam;
-                _assignUser.TeamName = _teams.FirstOrDefault(t => t.TeamId == newTeam)?.TeamName;
+                _assignUser.Teams = _teams
+                    .Where(t => _assignTeamIds.Contains(t.TeamId))
+                    .OrderBy(t => t.TeamName)
+                    .Select(t => new TeamRef(t.TeamId, t.TeamName))
+                    .ToList();
                 Snackbar.Add($"บันทึก Team ของ {_assignUser.FullName} แล้ว", Severity.Success);
                 _assignVisible = false;
                 await ReloadTeamsOnly();   // จำนวนสมาชิกใน Manage Team
