@@ -1,0 +1,19 @@
+﻿@inject NavigationManager NavigationManager
+@inject IWebHostEnvironment Env
+
+@code {
+
+
+
+    protected override void OnInitialized()
+    {
+
+        var loginUrl = Env.IsProduction()
+            ? "/ENG4_System/Login"
+            : "/Login";
+
+        // NavigationManager.NavigateTo("~/Login", forceLoad: true);
+
+        NavigationManager.NavigateTo(loginUrl, forceLoad: true);
+    }
+}

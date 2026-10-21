@@ -1,0 +1,1098 @@
+﻿@page "/"
+@rendermode InteractiveServer
+@attribute [Authorize]
+
+@using Microsoft.EntityFrameworkCore
+@using SystemAll.Data
+@using SystemAll.Models
+@using SystemAll.Services
+
+@inject NavigationManager Nav
+@inject IWebHostEnvironment Env
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject IHttpClientFactory HttpFactory
+@inject ISnackbar Snackbar
+
+<PageTitle>ENG4 System Management</PageTitle>
+
+<div class="dashboard-wrapper">
+
+    <div class="animated-bg">
+        <span></span><span></span><span></span>
+        <span></span><span></span>
+    </div>
+
+    <!-- Header -->
+    <div class="dash-header">
+        <div class="dash-header-left">
+            <div class="dash-logo">
+                @* <MudIcon Icon="@Icons.Material.Filled.Settings" Style="color:white; font-size:32px;" /> *@
+                <img src="images/gear1.png" alt="Logo" style="width:58px; height:58px; object-fit:contain; padding:2px;" />
+            </div>
+            <div>
+                <div class="dash-title">ENG4 System Management</div>
+                <div class="dash-subtitle">Engineering Department Portal</div>
+            </div>
+        </div>
+        <div class="dash-header-right">
+
+            <div class="dash-header-right">
+                <div class="notif-bell" @onclick="ToggleNotif">
+                    <MudIcon Icon="@Icons.Material.Filled.Notifications"
+                             Style="color:rgba(255,255,255,0.9); font-size:24px;" />
+                    <span class="notif-badge">@_announcements.Count</span>
+                </div>
+
+                <div class="user-info" style="cursor:pointer;" @onclick="ToggleUserMenu">
+                    <MudIcon Icon="@Icons.Material.Filled.AccountCircle"
+                             Style="color:rgba(255,255,255,0.9); font-size:24px;" />
+                    <div class="user-details">
+                        <span class="user-name">@_shortName</span>
+                        <span class="user-dept">@_department</span>
+                    </div>
+                    <MudIcon Icon="@(_userMenuOpen? Icons.Material.Filled.ArrowDropUp : Icons.Material.Filled.ArrowDropDown)"
+                             Style="color:rgba(255,255,255,0.9); font-size:22px; transition:transform .2s;" />
+                </div>
+
+                <MudPopover Open="_userMenuOpen" AnchorOrigin="Origin.BottomRight"
+                            TransformOrigin="Origin.TopRight"
+                            Style="min-width:260px; border-radius:14px; overflow:hidden; box-shadow:0 12px 40px rgba(0,0,0,.18);">
+
+                    @* หัวเมนู — โปรไฟล์ *@
+                    <div class="usermenu-head">
+                        <MudIcon Icon="@Icons.Material.Filled.AccountCircle" Style="color:#fff; font-size:40px;" />
+                        <div class="usermenu-head-text">
+                            <span class="usermenu-name">@_shortName</span>
+                            <span class="usermenu-dept">@_department</span>
+                            @if (_isAdmin)
+                            {
+                                <span class="usermenu-badge">ADMIN</span>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="usermenu-body">
+                        @if (_isAdmin)
+                        {
+                            <div class="usermenu-item" @onclick="GoAdmin">
+                                <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings"
+                                         Style="color:#8b57b8; font-size:20px;" />
+                                <span>Admin</span>
+                            </div>
+                        }
+                        <div class="usermenu-item" @onclick="OpenRequestAccess">
+                            <MudIcon Icon="@Icons.Material.Filled.AddModerator"
+                                     Style="color:#43a047; font-size:20px;" />
+                            <span>Request Access Menu</span>
+                        </div>
+                        <div class="usermenu-item" @onclick="OpenChangePassword">
+                            <MudIcon Icon="@Icons.Material.Filled.Password"
+                                     Style="color:#1565C0; font-size:20px;" />
+                            <span>Change Password</span>
+                        </div>
+                        <div class="usermenu-divider"></div>
+                        <div class="usermenu-item usermenu-danger" @onclick="HandleLogout">
+                            <MudIcon Icon="@Icons.Material.Filled.Logout"
+                                     Style="color:#e24646; font-size:20px;" />
+                            <span>Logout</span>
+                        </div>
+                    </div>
+                </MudPopover>
+
+                <MudOverlay Visible="_userMenuOpen" OnClick="@(() => _userMenuOpen = false)"
+                            Style="background:rgba(0,0,0,0.35); backdrop-filter:blur(2px);" />
+
+            </div>
+        </div>
+    </div>
+
+    <!-- System Grid -->
+    <div class="dash-content">
+
+        <div class="section-header">
+            <MudIcon Icon="@Icons.Material.Filled.GridView"
+                     Style="vertical-align:middle; margin-right:8px; color:#1565C0; font-size:22px;" />
+            <span class="section-title">ระบบทั้งหมด</span>
+        </div>
+
+        <div class="sys-grid">
+            
+            @foreach (var sys in GetSystems())
+            {                
+                var hasPerm = _user?.FindFirst(sys.PermClaim)?.Value == "True";
+    
+                @if (hasPerm)
+                {
+                    var isExternal = sys.Url.StartsWith("http");
+
+                    @* var target = isExternal ? "_blank" : "_self"; *@
+
+                    var target = "_blank";
+                    <a class="sys-card-link" href="@sys.Url" target="@target">
+                        <div class="sys-card">
+                            @* ส่วนที่ 1 : icon บน card *@
+                            <div class="sys-part1" style="background:@sys.Color">
+                                @if (!string.IsNullOrEmpty(sys.ImageUrl))
+                                {
+                                    <img src="@sys.ImageUrl"
+                                         style="width:48px; height:48px; object-fit:contain;" />
+                                }
+                                else
+                                {
+                                    <MudIcon Icon="@sys.MudIcon" Style="color:rgba(255,255,255,0.85); font-size:34px;" />
+                                }
+                                <span class="sys-abbr">@sys.Abbr</span>
+                            </div>
+
+                            @* ส่วนที่ 2 : icon หน้าชื่อ *@
+                            <div class="sys-part2">
+                                @if (!string.IsNullOrEmpty(sys.ImageUrl))
+                                {
+                                    <img src="@sys.ImageUrl"
+                                         style="width:18px; height:18px; object-fit:contain;
+                                    margin-right:6px; vertical-align:middle;" />
+                                }
+                                else
+                                {
+                                    <MudIcon Icon="@sys.MudIcon"
+                                             Style="@($"color:{sys.Color}; font-size:18px; margin-right:6px; vertical-align:middle;")" />
+                                }
+                                <span class="sys-fullname">@sys.FullName</span>
+                            </div>
+
+                            @* ส่วนที่ 3 : รายละเอียดเพิ่มเตืม *@
+                            <div class="sys-part3">
+                                <span class="sys-desc">@sys.Description</span>
+                                <MudIcon Icon="@Icons.Material.Filled.ArrowForward"
+                                         Style="@($"font-size:16px; color:{sys.Color}")" />
+                            </div>
+                        </div>
+                    </a>
+                }
+                else
+                {
+                    <MudTooltip Text="คุณไม่มีสิทธิ์เข้าใช้งานระบบนี้ กรุณาติดต่อ ENG4 (5504)" Placement="Placement.Top">
+                        <div class="sys-card-link sys-card-disabled">
+                            <div class="sys-card">
+                                <div class="sys-part1" style="background:#9E9E9E">
+                                    @if (!string.IsNullOrEmpty(sys.ImageUrl))
+                                    {
+                                        <img src="@sys.ImageUrl"
+                                             style="width:52px; height:52px; object-fit:contain;" />
+                                    }
+                                    else
+                                    {
+                                        <MudIcon Icon="@sys.MudIcon" Style="color:rgba(255,255,255,0.85); font-size:34px;" />
+                                    }
+                                    <span class="sys-abbr">@sys.Abbr</span>
+                                </div>
+                                <div class="sys-part2">
+                                    @if (!string.IsNullOrEmpty(sys.ImageUrl))
+                                    {
+                                        <img src="@sys.ImageUrl"
+                                             style="width:18px; height:18px; object-fit:contain;
+                                        margin-right:6px; vertical-align:middle;" />
+                                    }
+                                    else
+                                    {
+                                        <MudIcon Icon="@sys.MudIcon"
+                                                 Style="@($"color:{sys.Color}; font-size:18px; margin-right:6px; vertical-align:middle;")" />
+                                    }
+                                    <span class="sys-fullname">@sys.FullName</span>
+                                </div>
+                                <div class="sys-part3">
+                                    <span class="sys-desc" style="color:#BDBDBD;">@sys.Description</span>
+                                    <MudIcon Icon="@Icons.Material.Filled.Lock"
+                                             Style="font-size:16px; color:#BDBDBD;" />
+                                </div>
+                            </div>
+                        </div>
+                    </MudTooltip>
+                }
+            }
+        </div>
+
+        <MudPopover Open="_notifOpen" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
+                    Style="min-width:420px; max-width:600px; border-radius:14px; overflow:hidden; box-shadow:0 12px 40px rgba(0,0,0,.18);">
+            <div class="notif-head">
+                <MudIcon Icon="@Icons.Material.Filled.Announcement" Style="color:#fff; font-size:20px;" />
+                <span>ประกาศ / การอัปเดตระบบ</span>
+            </div>
+            <div class="notif-body">
+                @if (_announcements.Count == 0)
+                {
+                    <div class="notif-empty">
+                        <MudIcon Icon="@Icons.Material.Outlined.Notifications" Style="font-size:36px; color:#B0BEC5;" />
+                        <div>ยังไม่มีประกาศในขณะนี้</div>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var ann in _announcements)
+                    {
+                        <div class="notif-item">
+                            <span class="notif-title">@ann.Title</span>
+                            @if (!string.IsNullOrEmpty(ann.Content))
+                            {
+                                <span class="notif-detail">@ann.Content</span>
+                            }
+                            <span class="notif-date">@ann.CreatedDate.ToString("dd/MM/yyyy")</span>
+                        </div>
+                    }
+                }
+            </div>
+        </MudPopover>
+
+        <MudOverlay Visible="_notifOpen" OnClick="@(() => _notifOpen = false)"
+                    Style="background:rgba(0,0,0,0.35); backdrop-filter:blur(2px);" />
+
+    </div>   
+
+    <div class="dash-footer">
+        © @DateTime.Now.Year ENG4 Engineering Department &nbsp;·&nbsp; System All v1.0
+    </div>
+
+    @* Animated Wave ด้านล่าง *@
+    <div class="wave-container">
+        <svg class="waves" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+             viewBox="0 24 150 28" preserveAspectRatio="none" shape-rendering="auto">
+            <defs>
+                <path id="wave-path" d="M-160 44c30 0 58-18 88-18s 58 18 88 18 58-18 88-18 58 18 88 18 v44h-352z" />
+            </defs>
+            <g class="wave-parallax">
+                <use xlink:href="#wave-path" x="48" y="0" fill="rgba(21,101,192,0.10)" />
+                <use xlink:href="#wave-path" x="48" y="3" fill="rgba(21,101,192,0.07)" />
+                <use xlink:href="#wave-path" x="48" y="5" fill="rgba(38,152,163,0.06)" />
+                <use xlink:href="#wave-path" x="48" y="7" fill="rgba(21,101,192,0.04)" />
+            </g>
+        </svg>
+    </div>
+
+    <MudDialog @bind-Visible="_cpVisible" Options="_cpOptions">
+        <TitleContent>
+            <MudText Typo="Typo.h6">
+                <MudIcon Icon="@Icons.Material.Filled.Lock" Class="mr-2" />เปลี่ยนรหัสผ่าน
+            </MudText>
+        </TitleContent>
+        <DialogContent>
+            <MudTextField @bind-Value="_cpCurrent" Label="รหัสผ่านปัจจุบัน"
+                          InputType="InputType.Password" Variant="Variant.Outlined" Class="mb-3" />
+            <MudTextField @bind-Value="_cpNew" Label="รหัสผ่านใหม่"
+                          InputType="InputType.Password" Variant="Variant.Outlined" Class="mb-3"
+                          HelperText="อย่างน้อย 6 ตัวอักษร" />
+            <MudTextField @bind-Value="_cpConfirm" Label="ยืนยันรหัสผ่านใหม่"
+                          InputType="InputType.Password" Variant="Variant.Outlined" />
+            @if (!string.IsNullOrEmpty(_cpError))
+            {
+                <MudText Color="Color.Error" Typo="Typo.body2" Class="mt-2">@_cpError</MudText>
+            }
+        </DialogContent>
+        <DialogActions>
+            <MudButton OnClick="@(() => _cpVisible = false)">ยกเลิก</MudButton>
+            <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                       OnClick="@SaveChangePassword" Disabled="_cpSaving">
+                @if (_cpSaving)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                }
+                บันทึก
+            </MudButton>
+        </DialogActions>
+    </MudDialog>
+
+    <MudDialog @bind-Visible="_raVisible" Options="_raOptions">
+        <TitleContent>
+            <MudText Typo="Typo.h6">
+                <MudIcon Icon="@Icons.Material.Filled.AddModerator" Class="mr-2" />ขอสิทธิ์เข้าถึงเมนู
+            </MudText>
+        </TitleContent>
+        <DialogContent>
+            @if (_raLoading)
+            {
+                <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+            }
+            else
+            {
+                <div class="ra-list">
+                    @foreach (var m in _raMenus)
+                    {
+                        var isGranted = m.Status == 1;
+                        var isPending = m.Status == 50;
+                        var disabled = isGranted || isPending;
+
+                        <label class="ra-item @(disabled ? "ra-disabled" : "")">
+                            <input type="checkbox" disabled="@disabled"
+                                   checked="@_raSelected.Contains(m.Column)"
+                                   @onchange="@(e => ToggleMenu(m.Column, (bool)e.Value!))" />
+                            <div class="ra-label">
+                                <span class="ra-name">
+                                    @m.Name
+                                    @if (m.Eng4Only) { <span class="ra-badge eng4">ENG4</span> }
+                                    @if (isGranted) { <span class="ra-badge granted">มีสิทธิ์แล้ว</span> }
+                                    @if (isPending) { <span class="ra-badge pending">รออนุมัติ</span> }
+                                </span>
+                                <span class="ra-detail">@m.Detail</span>
+                            </div>
+                        </label>
+                    }
+                </div>
+                @if (!string.IsNullOrEmpty(_raError))
+                {
+                    <MudText Color="Color.Error" Typo="Typo.body2" Class="mt-2">@_raError</MudText>
+                }
+            }
+        </DialogContent>
+        <DialogActions>
+            <MudButton OnClick="@(() => _raVisible = false)">ยกเลิก</MudButton>
+            <MudButton Color="Color.Success" Variant="Variant.Filled"
+                       OnClick="SubmitRequestAccess" Disabled="_raSaving">
+                @if (_raSaving)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                }
+                ส่งคำขอ
+            </MudButton>
+        </DialogActions>
+    </MudDialog>
+
+</div>
+
+<style>
+
+    /* ===== User Menu Dropdown ===== */
+    .usermenu-head {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 18px 20px;
+        background: linear-gradient(135deg, #4f8bcc, #1976D2);
+    }
+
+    .usermenu-head-text {
+        display: flex;
+        flex-direction: column;
+        line-height: 1.3;
+    }
+
+    .usermenu-name {
+        color: #fff;
+        font-weight: 700;
+        font-size: 15px;
+    }
+
+    .usermenu-dept {
+        color: rgba(255,255,255,0.8);
+        font-size: 12px;
+    }
+
+    .usermenu-badge {
+        display: inline-block;
+        margin-top: 5px;
+        width: fit-content;
+        background: rgba(255,255,255,0.25);
+        color: #fff;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 1px;
+        padding: 2px 8px;
+        border-radius: 6px;
+    }
+
+    .usermenu-body {
+        padding: 8px;
+        background: #fff;
+    }
+
+    .usermenu-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 11px 14px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-size: 14px;
+        color: #37474F;
+        font-weight: 500;
+        transition: background .15s, transform .1s;
+    }
+
+        .usermenu-item:hover {
+            background: #d2dbf3;
+        }
+
+        .usermenu-item:active {
+            transform: scale(0.98);
+        }
+
+    .usermenu-danger:hover {
+        background: #f5dade;
+        color: #c62828;
+    }
+
+    .usermenu-divider {
+        height: 1px;
+        background: #ECEFF1;
+        margin: 6px 8px;
+    }
+
+    .ra-list { display:flex; flex-direction:column; gap:6px; max-height:400px; overflow-y:auto; }
+    .ra-item {
+        display:flex; align-items:flex-start; gap:10px; padding:10px 12px;
+        border:1px solid #eee; border-radius:8px; cursor:pointer; transition:background .15s;
+    }
+    .ra-item:hover { background:#F5F7FA; }
+    .ra-item input[type=checkbox] { margin-top:3px; width:16px; height:16px; }
+    .ra-disabled { background:#f5f5f5; cursor:not-allowed; opacity:.75; }
+    .ra-label { display:flex; flex-direction:column; }
+    .ra-name { font-weight:600; color:#333; font-size:14px; }
+    .ra-detail { color:#999; font-size:12px; margin-top:2px; }
+    .ra-badge {
+        font-size:10px; padding:1px 7px; border-radius:8px; margin-left:6px; font-weight:600;
+    }
+    .ra-badge.eng4 { background:#e3f2fd; color:#1565c0; }
+    .ra-badge.granted { background:#e8f5e9; color:#2e7d32; }
+    .ra-badge.pending { background:#fff3e0; color:#e65100; }
+
+    /* ===== Notification Bell ===== */
+    .notif-bell {
+        position: relative;
+        cursor: pointer;
+        padding: 6px;
+        margin-right: 12px;
+        display: flex;
+        align-items: center;
+        transition: transform .15s;
+    }
+
+        .notif-bell:hover {
+            transform: scale(1.1);
+        }
+
+    .notif-badge {
+        position: absolute;
+        top: -2px;
+        right: -4px;
+        min-width: 18px;
+        height: 18px;
+        background: #e24646;
+        color: #fff;
+        font-size: 11px;
+        font-weight: 700;
+        border-radius: 9px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 5px;
+        border: 2px solid #1565C0;
+    }
+
+    .notif-head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 16px 18px;
+        background: linear-gradient(135deg, #E65100, #F57C00);
+        color: #fff;
+        font-weight: 600;
+        font-size: 14px;
+    }
+
+    .notif-body {
+        background: #fff;
+        max-height: 380px;
+        overflow-y: auto;
+    }
+
+    .notif-empty {
+        text-align: center;
+        padding: 40px 20px;
+        color: #90A4AE;
+        font-size: 13px;
+    }
+
+        .notif-empty > div {
+            margin-top: 8px;
+        }
+
+    .notif-item {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        padding: 12px 18px;
+        border-bottom: 1px solid #F0F0F0;
+    }
+
+        .notif-item:hover {
+            background: #FFF8F0;
+        }
+
+    .notif-title {
+        font-weight: 600;
+        color: #333;
+        font-size: 14px;
+    }
+
+    .notif-detail {
+        color: #777;
+        font-size: 12px;
+    }
+
+    .notif-date {
+        color: #aaa;
+        font-size: 11px;
+    }
+
+    /* ===== Animated Background ===== */
+    .dashboard-wrapper {
+        position: relative;
+        overflow: hidden;
+    }
+
+    .animated-bg {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        background: linear-gradient(135deg, #eef4fb 0%, #e8f0fa 50%, #f0f4f8 100%);
+        overflow: hidden;
+    }
+
+        .animated-bg span {
+            position: absolute;
+            display: block;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(21,101,192,0.12), rgba(21,101,192,0.02));
+            animation: float-bubble 20s infinite ease-in-out;
+        }
+
+            .animated-bg span:nth-child(1) {
+                width: 320px;
+                height: 320px;
+                left: 8%;
+                top: 12%;
+                animation-duration: 22s;
+            }
+
+            .animated-bg span:nth-child(2) {
+                width: 220px;
+                height: 220px;
+                left: 70%;
+                top: 8%;
+                animation-duration: 26s;
+                animation-delay: 2s;
+                background: radial-gradient(circle, rgba(139,87,184,0.12), rgba(139,87,184,0.02));
+            }
+
+            .animated-bg span:nth-child(3) {
+                width: 400px;
+                height: 400px;
+                left: 55%;
+                top: 55%;
+                animation-duration: 30s;
+                animation-delay: 4s;
+                background: radial-gradient(circle, rgba(38,152,163,0.12), rgba(38,152,163,0.02));
+            }
+
+            .animated-bg span:nth-child(4) {
+                width: 180px;
+                height: 180px;
+                left: 20%;
+                top: 65%;
+                animation-duration: 24s;
+                animation-delay: 1s;
+                background: radial-gradient(circle, rgba(230,81,0,0.12), rgba(230,81,0,0.02));
+            }
+
+            .animated-bg span:nth-child(5) {
+                width: 260px;
+                height: 260px;
+                left: 40%;
+                top: 30%;
+                animation-duration: 28s;
+                animation-delay: 3s;
+            }
+
+    @@keyframes float-bubble {
+        0%, 100%
+
+    {
+        transform: translate(0, 0) scale(1);
+    }
+
+    33% {
+        transform: translate(40px, -50px) scale(1.1);
+    }
+
+    66% {
+        transform: translate(-30px, 40px) scale(0.95);
+    }
+
+    }
+
+    /* ให้ content ลอยเหนือ background */
+    .dash-header, .dash-content, .dash-footer {
+        position: relative;
+        z-index: 1;
+    }
+
+    /* ===== Animated Wave (ด้านล่าง) ===== */
+    .dashboard-wrapper {
+        position: relative;
+        overflow: hidden;
+        min-height: 100vh;
+    }
+
+    .wave-container {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 140px;
+        z-index: 0;
+        pointer-events: none; /* คลิกทะลุได้ ไม่บัง content */
+    }
+
+    .waves {
+        width: 100%;
+        height: 100%;
+    }
+
+    /* คลื่น 4 ชั้น เลื่อนคนละความเร็ว = parallax */
+    .wave-parallax > use {
+        animation: wave-move 25s cubic-bezier(.55,.5,.45,.5) infinite;
+    }
+
+        .wave-parallax > use:nth-child(1) {
+            animation-delay: -2s;
+            animation-duration: 9s;
+        }
+
+        .wave-parallax > use:nth-child(2) {
+            animation-delay: -3s;
+            animation-duration: 12s;
+        }
+
+        .wave-parallax > use:nth-child(3) {
+            animation-delay: -4s;
+            animation-duration: 15s;
+        }
+
+        .wave-parallax > use:nth-child(4) {
+            animation-delay: -5s;
+            animation-duration: 20s;
+        }
+
+    @@keyframes wave-move {
+        0% {
+            transform: translate3d(-90px, 0, 0);
+        }
+
+        100% {
+            transform: translate3d(85px, 0, 0);
+        }
+    }
+
+    /* content ลอยเหนือ wave */
+    .dash-header, .dash-content, .dash-footer {
+        position: relative;
+        z-index: 1;
+    }
+
+</style>
+
+@code
+{
+
+    [CascadingParameter] private Task<AuthenticationState>? AuthStateTask { get; set; }
+
+    private bool _userMenuOpen = false;
+    private void ToggleUserMenu() => _userMenuOpen = !_userMenuOpen;
+   
+    private string _fullName = "";
+    private string _shortName = "";
+    private string _department = "";
+
+    private bool _isAdmin = false;
+
+    // Change Password dialog state
+    private bool _cpVisible = false;
+    private bool _cpSaving = false;
+    private string _cpCurrent = "";
+    private string _cpNew = "";
+    private string _cpConfirm = "";
+    private string _cpError = "";
+    private readonly DialogOptions _cpOptions = new() { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true };
+
+    // Request Access state
+    private bool _raVisible = false;
+    private bool _raLoading = false;
+    private bool _raSaving = false;
+    private string _raError = "";
+    private List<AccessMenuItem> _raMenus = new();
+    private HashSet<string> _raSelected = new();
+    private readonly DialogOptions _raOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
+
+    private System.Security.Claims.ClaimsPrincipal? _user;
+    private List<SysAnnouncement> _announcements = new();
+    private List<SystemItem> _visibleSystems = new();
+
+    // Announcement
+    private bool _notifOpen = false;
+    private void ToggleNotif() => _notifOpen = !_notifOpen;
+
+    // helper สร้าง URL ตาม environment
+    private string SSOUrl(string returnUrl)
+    {
+        var basePath = Env.IsProduction() ? "/ENG4_System" : "";
+        return $"{basePath}/SSOBridge?returnUrl={returnUrl}";
+    }
+
+    // รายการระบบทั้งหมด พร้อม permission claim name และ URL
+    private List<SystemItem> GetSystems()
+    {
+        var basePath = Env.IsProduction() ? "/ENG4_System" : "";        
+        var empId = _user?.FindFirst("EmpId")?.Value ?? "";
+
+        string SSOUrl(string targetPage) =>
+            $"{basePath}/SSOBridge?returnUrl=" +
+            $"http://cptsvs552.canon-pt.co.th/Dashboard_system/Default.aspx" +
+            $"%3FreturnUrl%3D" +  // encode ? และ =
+            $"http%3A%2F%2Fcptsvs552.canon-pt.co.th%2FDashboard_system%2F{targetPage}";
+
+        string JigToolUrl(string targetPage) =>
+            $"{basePath}/SSOBridge?returnUrl=" +
+            $"http://cptsvs552.canon-pt.co.th/jig_tool_system/Default.aspx" +
+            $"%3FreturnUrl%3Dhttp%3A%2F%2Fcptsvs552.canon-pt.co.th%2Fjig_tool_system%2F{targetPage}";
+
+        string SparePartUrl(string targetPage) =>
+            $"{basePath}/SSOBridge?returnUrl=" +
+            $"http://cptsvs552.canon-pt.co.th/spare_tool_system/Default.aspx" +
+            $"%3FreturnUrl%3Dhttp%3A%2F%2Fcptsvs552.canon-pt.co.th%2Fspare_tool_system%2F{targetPage}";
+
+
+        return new List<SystemItem>
+        {
+            // --- Row 1 ---
+            // Dashboard
+            // new("Dashboard","Dashboard System","ข้อมูลสรุปผล",
+            //     SSOUrl("DB_PM1.aspx"),
+            //     "#2e6231",
+            //     Icons.Material.Filled.Dashboard,
+            //     "Perm_Dashboard",
+            //     "images/menu/dashboard.png"),
+            new("Dashboard","New Dashboard","ข้อมูลสรุปผล",
+                "http://cptsvs552.canon-pt.co.th/Dashboard",
+                "#2e6231",
+                Icons.Material.Filled.Dashboard,
+                "Perm_Dashboard",
+                "images/menu/dashboard.png"),
+            // WMS - Work Management System
+            new("WMS","Work Management System (Dev)","ระบบบริหารจัดการงาน",
+                "http://cptsvs552.canon-pt.co.th/Wms_System/",
+                "#1565C0",
+                Icons.Material.Filled.Work,
+                "Perm_WMS",
+                "images/menu/wms.png"),
+            // JMS - Jig Tool Management (status=0)
+            new("JMS","Jig Tool Management System","ระบบการจัดการ, ควบคุม Jig Tool",
+                JigToolUrl("tool_master_ver2.aspx"),
+                "#d16428",
+                Icons.Material.Filled.Build,
+                "Perm_JMS",
+                "images/menu/jms.png"),
+            // Spare Part System
+            new("Spare Part","Spare Part System","ระบบอะไหล่สำรอง",
+                SparePartUrl("xspare_partList.aspx"),
+                "#d16428",
+                Icons.Material.Filled.Settings,
+                "Perm_SparePart",
+                "images/menu/sparepart.png"),
+
+            // --- Row 2 ---
+            // Approve System
+            new("Approval","Approval Work Flow System","ระบบเวิร์กโฟลว์การอนุมัติ",
+                "http://cptsvs552.canon-pt.co.th/ENG4_Approval/",
+                "#8b57b8",
+                Icons.Material.Filled.Engineering,
+                "Perm_Approval",
+                "images/menu/approved.png"),
+            // PMS - Preventive Maintenance (status=2)
+            new("PM","Preventive Maintenance System","ระบบการบำรุงรักษาเชิงป้องกัน",
+                JigToolUrl("PM_MasterList2.aspx"),
+                "#d16428",
+                Icons.Material.Filled.Engineering,
+                "Perm_PMS",
+                "images/menu/pms.png"),
+            //  PM Problem (status=4)
+            new("PM Problem", "PM Problem System","ระบบการจัดการปัญหา PM",
+                JigToolUrl("jt_problem_his_master.aspx"),
+                "#d16428",
+                Icons.Material.Filled.MenuBook,
+                "Perm_PmProblem",
+                "images/menu/pmproblem.png"),
+            // PM Manual , PM&TPM
+            new("PM Manual","PM Manual System (Dev)","ระบบการจัดการเอกสาร PM Manual",
+                "http://cptsvs552.canon-pt.co.th/PM_Manual_System",
+                "#d16428",
+                Icons.Material.Filled.MenuBook,
+                "Perm_PMManual",
+                "images/menu/pmmanual.png"),
+
+            // --- Row 3 ---            
+
+            // Bus Request System            
+            new("BUS", "Bus Request System","ระบบการร้องขอรถรับส่ง",
+                "http://cptsvs552.canon-pt.co.th/user_master/Bus_Request.aspx",
+                "#1565C0",
+                Icons.Material.Filled.DirectionsBus,
+                "Perm_BUS",
+                "images/menu/bus.png"),
+
+            // PM Chat (Old)
+            new("PM Chat", "PM Chat (Old System)","แจ้งข้อมูล,ข่าวสาร",
+                "http://cptsvs552.canon-pt.co.th/ChatENE_System/login.aspx",
+                "#1565C0",
+                Icons.Material.Filled.DirectionsBus,
+                "Perm_BUS",
+                "images/menu/pmchat.png"),
+            // Bug Report
+            new("SIP", "System Improvement Portal (Dev)","ระบบแจ้งปัญหาและพัฒนา",
+                "http://cptsvs552.canon-pt.co.th/Bug_Report/list",
+                "#e24646",
+                Icons.Material.Filled.BugReport,
+                "Perm_BugReport",
+                "images/menu/bug.png"),
+            // Flow & Manual
+            new("Manual", "Flow & Manual System","ระบบจัดเก็บเอกสารขขั้นตอนการทำงาน",
+                SSOUrl("Manual_System.aspx"),
+                "#2e6231",
+                Icons.Material.Filled.DirectionsBus,
+                "Perm_Manual",
+                "images/menu/flowmanual.png"),
+
+            // --- Row 4 ---            
+
+            // **** Test
+
+            // Dashboard System
+            // new("Dashboard","New Dashboard (Dev)","Dashboard System",
+            //     "http://cptsvs552.canon-pt.co.th/Dashboard",
+            //     "#7e8791",
+            //     Icons.Material.Filled.Dashboard,
+            //     "Perm_Dashboard",
+            //     "images/menu/dashboard.png"),
+
+            // new("Equipment","Equipment System (Dev)","ระบบการจัดการอุปกรณ์",
+            // "/SSOBridge?returnUrl=http://your-equipment-url",
+            // "#7e8791",
+            // Icons.Material.Filled.Handyman,
+            // "Perm_DevelopSystem",
+            // "images/menu/equipment.png"),
+
+            // NEW JMS
+            new("JMS", "New Jig Tool (Dev)","Wait Dev : Upgrade System",
+                "http://cptsvs552.canon-pt.co.th/JigTool",
+                "#7e8791",
+                Icons.Material.Filled.DirectionsBus,
+                "Perm_JMS",
+                "images/menu/app-development.png"),
+
+            // NEW PM System
+            new("PM", "New PM System (Dev)","Wait Dev : Upgrade System",
+                "http://cptsvs552.canon-pt.co.th/PM_System",
+                "#7e8791",
+                Icons.Material.Filled.DirectionsBus,
+                "Perm_DevelopSystem",
+                "images/menu/app-development.png"),
+
+            // NEW PM Problem System
+            new("PM Problem", "New PM Problem (Dev)","Wait Dev : Upgrade System",
+                "http://cptsvs552.canon-pt.co.th/PM_Problem_System",
+                "#7e8791",
+                Icons.Material.Filled.DirectionsBus,
+                "Perm_PmProblem",
+                "images/menu/pmproblem.png"),
+
+            // NEW Spare Part System
+            new("Spare Part", "New Spare Part (Dev)","Wait Dev : Upgrade System",
+                "http://cptsvs552.canon-pt.co.th/SparePart",
+                "#7e8791",
+                Icons.Material.Filled.DirectionsBus,
+                "Perm_SparePart",
+                "images/menu/sparepart.png")
+        };
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthStateTask == null) return;
+
+        var auth = await AuthStateTask;
+
+        _user = auth.User;
+        _fullName = auth.User.FindFirst("FullName")?.Value ?? auth.User.Identity?.Name ?? "";
+        _shortName = auth.User.FindFirst("ShortName")?.Value ?? _fullName;
+        _department = auth.User.FindFirst("DeptNameFull")?.Value ?? auth.User.FindFirst("Department")?.Value ?? "";
+        _isAdmin = auth.User.FindFirst("Perm_Admin")?.Value == "True";
+
+        // กรองระบบตามสิทธิ์ — ถ้า claim ไม่มีหรือเป็น "True" ให้แสดง
+        _visibleSystems = GetSystems()
+            .Where(s =>
+            {
+                var permClaim = auth.User.FindFirst(s.PermClaim)?.Value;
+                // ถ้าไม่มี Claim นี้ = ระบบเก่า/ไม่ได้กำหนด → ซ่อน
+                // ถ้ามีและเป็น "True" → แสดง
+                return permClaim == "True";
+            })
+            .ToList();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        try
+        {
+            await LoadAnnouncementsAsync();
+            StateHasChanged();
+        }
+        catch { }
+    }
+
+    private async Task LoadAnnouncementsAsync()
+    {
+        try
+        {
+            await using var db = DbFactory.CreateDbContext();
+            _announcements = await db.SysAnnouncements
+                .Where(a => a.IsActive)
+                .OrderBy(a => a.SortOrder)
+                .ThenByDescending(a => a.CreatedDate)
+                .Take(10)
+                .ToListAsync();
+        }
+        catch { }
+    }
+
+    private record SystemItem(
+        string Abbr,
+        string FullName,
+        string Description,
+        string Url,
+        string Color,
+        string MudIcon,
+        string PermClaim,
+        string ImageUrl);   // <-- เพิ่ม PermClaim
+
+    private void GoAdmin()
+    {
+        _userMenuOpen = false;
+        Nav.NavigateTo("Admin");
+    }
+
+    private void OpenChangePassword()
+    {
+        _userMenuOpen = false;
+        _cpCurrent = _cpNew = _cpConfirm = _cpError = "";
+        _cpVisible = true;
+    }
+
+    private async Task SaveChangePassword()
+    {
+        _cpError = "";
+        if (string.IsNullOrEmpty(_cpCurrent)) { _cpError = "กรุณากรอกรหัสผ่านปัจจุบัน"; return; }
+        if (_cpNew.Length < 6) { _cpError = "รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร"; return; }
+        if (_cpNew != _cpConfirm) { _cpError = "รหัสผ่านใหม่ทั้งสองครั้งไม่ตรงกัน"; return; }
+
+        var userName = _user?.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value
+                       ?? _user?.Identity?.Name ?? "";
+        if (string.IsNullOrEmpty(userName)) { _cpError = "ไม่พบข้อมูลผู้ใช้"; return; }
+
+        _cpSaving = true;
+        try
+        {
+            var basePath = Env.IsProduction() ? "/ENG4_System" : "";
+            var client = HttpFactory.CreateClient();
+            var res = await client.PostAsJsonAsync(
+                $"http://cptsvs552.canon-pt.co.th{basePath}/api/reset/change",
+                new { userName, currentPassword = _cpCurrent, newPassword = _cpNew });
+
+            var data = await res.Content.ReadFromJsonAsync<ChangeResp>();
+            if (data is null || !data.success) { _cpError = data?.message ?? "เปลี่ยนรหัสผ่านไม่สำเร็จ"; return; }
+
+            _cpVisible = false;
+            Nav.NavigateTo("Logout", forceLoad: true);   // เปลี่ยนแล้ว logout ให้ login ใหม่
+        }
+        catch
+        {
+            _cpError = "เกิดข้อผิดพลาดในการเชื่อมต่อ";
+        }
+        finally
+        {
+            _cpSaving = false;
+        }
+    }
+
+    private record ChangeResp(bool success, string? message);
+
+    private async Task OpenRequestAccess()
+    {
+        _userMenuOpen = false;
+        _raError = "";
+        _raSelected.Clear();
+        _raVisible = true;
+        _raLoading = true;
+
+        var userName = _user?.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value
+                       ?? _user?.Identity?.Name ?? "";
+        try
+        {
+            var basePath = Env.IsProduction() ? "/ENG4_System" : "";
+            var client = HttpFactory.CreateClient();
+            var data = await client.GetFromJsonAsync<RequestAccessData>(
+                $"http://cptsvs552.canon-pt.co.th{basePath}/api/request/menus/{userName}");
+            _raMenus = data?.Menus ?? new();
+        }
+        catch { _raError = "โหลดรายการเมนูไม่สำเร็จ"; }
+        finally { _raLoading = false; }
+    }
+
+    private void ToggleMenu(string col, bool on)
+    {
+        if (on) _raSelected.Add(col);
+        else _raSelected.Remove(col);
+    }
+
+    private async Task SubmitRequestAccess()
+    {
+        _raError = "";
+        if (_raSelected.Count == 0) { _raError = "กรุณาเลือกเมนูที่ต้องการขอสิทธิ์อย่างน้อย 1 รายการ"; return; }
+
+        var userName = _user?.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value
+                       ?? _user?.Identity?.Name ?? "";
+        _raSaving = true;
+        try
+        {
+            var basePath = Env.IsProduction() ? "/ENG4_System" : "";
+            var client = HttpFactory.CreateClient();
+            var res = await client.PostAsJsonAsync(
+                $"http://cptsvs552.canon-pt.co.th{basePath}/api/request/menus",
+                new { userName, selectedColumns = _raSelected.ToList() });
+
+            var d = await res.Content.ReadFromJsonAsync<ReqResp>();
+            if (d is null || !d.success) { _raError = d?.message ?? "ส่งคำขอไม่สำเร็จ"; return; }
+
+            Snackbar.Add(d.message, Severity.Success);
+            _raVisible = false;
+        }
+        catch { _raError = "เกิดข้อผิดพลาดในการเชื่อมต่อ"; }
+        finally { _raSaving = false; }
+    }
+
+    private void HandleLogout()
+    {
+        _userMenuOpen = false;
+        Nav.NavigateTo("Logout", forceLoad: true);
+    }
+
+    private record ReqResp(bool success, string? message);
+}
+

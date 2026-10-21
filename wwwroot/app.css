@@ -1,0 +1,337 @@
+﻿html, body {
+    font-family: 'Segoe UI', 'THSarabunNew', Tahoma, Arial, sans-serif;
+    background-color: #F0F2F5;
+    margin: 0;
+    padding: 0;
+}
+
+/* ===== Dashboard Layout ===== */
+.dashboard-wrapper {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    /*background: #F0F2F5;*/
+}
+
+/* ===== Header ===== */
+.dash-header {
+    background: linear-gradient(135deg, #0D47A1 0%, #1565C0 60%, #1976D2 100%);
+    color: white;
+    padding: 0 32px;
+    height: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 12px rgba(13, 71, 161, 0.4);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.dash-header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.dash-logo {
+    width: 70px;
+    height: 60px;
+    background: rgba(255,255,255,0.25);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dash-title {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    line-height: 1.2;
+}
+
+.dash-subtitle {
+    font-size: 12px;
+    color: rgba(255,255,255,0.65);
+}
+
+.dash-header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255,255,255,0.1);
+    padding: 6px 14px 6px 10px;
+    border-radius: 24px;
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+.user-details {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.3;
+}
+
+.user-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: white;
+}
+
+.user-dept {
+    font-size: 11px;
+    color: rgba(255,255,255,0.7);
+}
+
+/* ===== Content ===== */
+.dash-content {
+    flex: 1;
+    padding: 14px 24px;
+    max-width: 1280px;
+    width: 100%;
+    margin: 0 auto;
+    max-height: calc(100vh - 138px);
+    overflow: auto;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.section-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: #37474F;
+}
+
+/* ===== System Grid ===== */
+.sys-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+}
+
+/* ===== System Card : 3 ส่วน ===== */
+.sys-card-link {
+    text-decoration: none;
+    display: block;
+}
+
+.sys-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    display: flex;
+    flex-direction: column;
+}
+
+    .sys-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 14px 36px rgba(0,0,0,0.16);
+    }
+
+/* ส่วนที่ 1 : ชื่อย่อ + Icon */
+.sys-part1 {
+    padding: 5px 20px 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.sys-abbr {
+    font-size: 26px;
+    font-weight: 800;
+    color: white;
+    letter-spacing: 1px;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.25);
+}
+
+/* ส่วนที่ 2 : ชื่อเต็ม */
+.sys-part2 {
+    padding: 12px 16px 8px;
+    background: white;
+    border-bottom: 1px solid #F0F0F0;
+    display: flex;
+    align-items: center;
+    min-height: 52px;
+}
+
+.sys-fullname {
+    font-size: 13px;
+    font-weight: 600;
+    color: #37474F;
+    line-height: 1.35;
+}
+
+/* ส่วนที่ 3 : คำอธิบาย */
+.sys-part3 {
+    padding: 10px 16px 12px;
+    background: #FAFAFA;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.sys-desc {
+    font-size: 12px;
+    color: #78909C;
+    line-height: 1.4;
+    flex: 1;
+}
+
+.sys-arrow {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    opacity: 0;
+    transition: opacity 0.18s;
+}
+
+.sys-card:hover .sys-arrow {
+    opacity: 1;
+}
+
+/* ===== Announcements ===== */
+.announce-empty {
+    padding: 48px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.announce-item {
+    padding: 14px 20px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    background: white;
+}
+
+.announce-odd {
+    background: #FAFAFA;
+}
+
+.announce-content {
+    flex: 1;
+}
+
+.announce-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #263238;
+}
+
+.announce-body {
+    font-size: 13px;
+    color: #607D8B;
+    margin-top: 4px;
+}
+
+.announce-date {
+    font-size: 12px;
+    color: #B0BEC5;
+    white-space: nowrap;
+    align-self: center;
+}
+
+/* ===== Footer ===== */
+.dash-footer {
+    text-align: center;
+    padding: 8px;
+    font-size: 12px;
+    color: #B0BEC5;
+    background: white;
+    border-top: 1px solid #ECEFF1;
+    margin-top: 32px;
+}
+
+/* ===== Blazor error UI ===== */
+#blazor-error-ui {
+    background: #FFEBEE;
+    bottom: 0;
+    box-shadow: 0 -1px 4px rgba(0,0,0,0.1);
+    display: none;
+    left: 0;
+    padding: 0.6rem 1.25rem 0.7rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+    color: #C62828;
+}
+
+    #blazor-error-ui .dismiss {
+        cursor: pointer;
+        position: absolute;
+        right: 0.75rem;
+        top: 0.5rem;
+    }
+
+/* ===== Responsive ===== */
+@media (max-width: 1100px) {
+    .sys-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .sys-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 14px;
+    }
+
+    .dash-header {
+        padding: 0 16px;
+    }
+
+    .dash-title {
+        font-size: 16px;
+    }
+
+    .user-dept {
+        display: none;
+    }
+
+    .dash-content {
+        padding: 16px;
+    }
+
+    /* Disabled Card */
+    .sys-card-disabled {
+        cursor: not-allowed;
+        text-decoration: none;
+        display: block;
+    }
+
+        .sys-card-disabled .sys-card {
+            opacity: 0.55;
+            filter: grayscale(60%);
+            box-shadow: none;
+            border: 1px solid #E0E0E0;
+        }
+
+            .sys-card-disabled .sys-card:hover {
+                transform: none;
+                box-shadow: none;
+            }
+}
+
+@media (max-width: 480px) {
+    .sys-grid {
+        grid-template-columns: 1fr;
+    }
+}

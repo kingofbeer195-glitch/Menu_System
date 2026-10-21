@@ -1,0 +1,670 @@
+﻿@page "/Admin"
+@rendermode InteractiveServer
+@attribute [Authorize]
+
+@using SystemAll.Services
+@inject NavigationManager Nav
+@inject AdminService AdminSvc
+@inject ISnackbar Snackbar
+
+<PageTitle>Admin — ENG4 System</PageTitle>
+
+<div class="admin-wrapper">
+
+    <!-- Header -->
+    <div class="admin-header">
+        <div class="admin-header-left">
+            <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" Style="color:#fff; font-size:30px;" />
+            <div>
+                <div class="admin-title">Admin Control Panel</div>
+                <div class="admin-subtitle">ENG4 System Management</div>
+            </div>
+        </div>
+        <MudButton StartIcon="@Icons.Material.Filled.ArrowBack" Variant="Variant.Text"
+                   Style="color:#fff;" OnClick="@(() => Nav.NavigateTo("/"))">
+            กลับหน้าหลัก
+        </MudButton>
+    </div>
+
+    <div class="admin-body">
+        <!-- Nav Menu -->
+        <div class="admin-nav">
+            <div class="admin-nav-item @(_activeMenu == "newuser" ? "active" : "")"
+                 @onclick="@(() => _activeMenu = "newuser")">
+                <MudIcon Icon="@Icons.Material.Filled.PersonAdd" Style="font-size:20px;" />
+                <span>New User</span>
+                @if (_pending.Count > 0)
+                {
+                    <span class="admin-nav-badge">@_pending.Count</span>
+                }
+            </div>
+
+            <div class="admin-nav-item @(_activeMenu == "updateuser" ? "active" : "")"
+                 @onclick="OpenUpdateUserTab">
+                <MudIcon Icon="@Icons.Material.Filled.SyncAlt" Style="font-size:20px;" />
+                <span>Update User</span>
+                @if (_sync.Count > 0)
+                {
+                    <span class="admin-nav-badge">@_sync.Count</span>
+                }
+            </div>
+        </div>
+
+        <!-- Page Content -->
+        <div class="admin-page">
+            @if (_activeMenu == "newuser")
+            {
+                <div class="admin-page-head">
+                    <h2>คำขอเข้าใช้งานระบบ (รออนุมัติ)</h2>
+                    <MudButton StartIcon="@Icons.Material.Filled.Refresh" Size="Size.Small"
+                               OnClick="LoadData">รีเฟรช</MudButton>
+                </div>
+
+                @if (_loading)
+                {
+                    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+                }
+                else if (_pending.Count == 0)
+                {
+                    <div class="admin-empty">
+                        <MudIcon Icon="@Icons.Material.Outlined.CheckCircle" Style="font-size:48px; color:#66bb6a;" />
+                        <p>ไม่มีคำขอรออนุมัติ</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="req-list">
+                        @foreach (var r in _pending)
+                        {
+                            <div class="req-card">
+                                <div class="req-card-main">
+                                    <div class="req-avatar @(r.IsNewUser ? "new-user" : "new-menu")">
+                                        <MudIcon Icon="@(r.IsNewUser? Icons.Material.Filled.PersonAdd : Icons.Material.Filled.PlaylistAdd)"
+                                                 Style="color:#fff; font-size:22px;" />
+                                    </div>
+                                    <div class="req-info">
+                                        <div class="req-name">
+                                            @r.FullName
+                                            <span class="req-tag @(r.IsNewUser ? "tag-new" : "tag-menu")">@r.RequestType</span>
+                                        </div>
+                                        <div class="req-meta">
+                                            <span>@r.UserName</span> · <span>@r.EmpId</span>
+                                            @if (!string.IsNullOrEmpty(r.Ext))
+                                            {
+                                                <text> · ต่อ @r.Ext</text>
+                                            }
+                                        </div>
+                                        <div class="req-menus">
+                                            @foreach (var m in r.PendingMenus)
+                                            {
+                                                <span class="req-menu-chip">@m</span>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                                <MudButton Variant="Variant.Filled" Color="Color.Success"
+                                           StartIcon="@Icons.Material.Filled.Check"
+                                           OnClick="@(() => OpenApproveDialog(r))">
+                                    Approve
+                                </MudButton>
+                            </div>
+                        }
+                    </div>
+                }
+            }
+            else if (_activeMenu == "updateuser")
+            {
+                <div class="admin-page-head">
+                    <h2>ข้อมูล User ที่ไม่ตรงกับ HRMS</h2>
+                    <div style="display:flex; gap:8px;">
+                        @if (_selectedUsers.Count > 0)
+                        {
+                            <MudButton StartIcon="@Icons.Material.Filled.Sync" Size="Size.Small"
+                                       Variant="Variant.Filled" Color="Color.Primary"
+                                       Disabled="_bulkSyncing" OnClick="SyncSelected">
+                                @if (_bulkSyncing)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                }
+                                Update ที่เลือก (@_selectedUsers.Count)
+                            </MudButton>
+                        }
+                        <MudButton StartIcon="@Icons.Material.Filled.Refresh" Size="Size.Small"
+                                   OnClick="LoadSyncData">รีเฟรช</MudButton>
+                    </div>
+                </div>
+
+                @if (_syncLoading)
+                {
+                    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+                }
+                else if (_sync.Count == 0)
+                {
+                    <div class="admin-empty">
+                        <MudIcon Icon="@Icons.Material.Outlined.CheckCircle" Style="font-size:48px; color:#66bb6a;" />
+                        <p>ข้อมูลตรงกับ HRMS ทั้งหมด</p>
+                    </div>
+                }
+                else
+                {
+                    <MudTable Items="_sync" Hover="true" Dense="true" Bordered="true">
+                        <HeaderContent>
+                            <MudTh Style="width:48px; text-align:center;">
+                                <MudCheckBox T="bool" Value="_selectAll" ValueChanged="ToggleSelectAll"
+                                             Dense="true" Color="Color.Primary" />
+                            </MudTh>
+                            <MudTh>User</MudTh>
+                            <MudTh>Emp ID</MudTh>
+                            <MudTh>ข้อมูลที่ไม่ตรง (เดิม → ใหม่)</MudTh>
+                            <MudTh Style="text-align:center; width:120px;">Update</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd Style="text-align:center;">
+                                <MudCheckBox T="bool" Value="@_selectedUsers.Contains(context.UserName)"
+                                             ValueChanged="@(v => ToggleRow(context.UserName, v))"
+                                             Dense="true" Color="Color.Primary" />
+                            </MudTd>
+                            <MudTd DataLabel="User">@context.UserName</MudTd>
+                            <MudTd DataLabel="Emp ID">@context.EmpId</MudTd>
+                            <MudTd DataLabel="Diff">
+                                @foreach (var f in context.DiffFields)
+                                {
+                                    <div class="sync-diff-row">
+                                        <span class="sync-field">@f</span>
+                                        <span class="sync-old">@OldVal(context, f)</span>
+                                        <MudIcon Icon="@Icons.Material.Filled.ArrowForward"
+                                                 Style="font-size:14px; color:#90A4AE;" />
+                                        <span class="sync-new">@NewVal(context, f)</span>
+                                    </div>
+                                }
+                            </MudTd>
+                            <MudTd Style="text-align:center;">
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                                           StartIcon="@Icons.Material.Filled.Sync"
+                                           Disabled="@(_syncingUser == context.UserName)"
+                                           OnClick="@(() => SyncUser(context.UserName))">
+                                    @if (_syncingUser == context.UserName)
+                                    {
+                                        <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                                    }
+                                    else
+                                    {
+                                        <span>Update</span>
+                                    }
+                                </MudButton>
+                            </MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    /* ===== Admin Page ===== */
+    .admin-wrapper {
+        min-height: 100vh;
+        background: #F0F2F5;
+    }
+
+    .admin-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 28px;
+        background: linear-gradient(135deg,#8b57b8,#6a3d94);
+        box-shadow: 0 2px 12px rgba(0,0,0,.15);
+    }
+
+    .admin-header-left {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+
+    .admin-title {
+        color: #fff;
+        font-size: 20px;
+        font-weight: 700;
+    }
+
+    .admin-subtitle {
+        color: rgba(255,255,255,.8);
+        font-size: 12px;
+    }
+
+    .admin-body {
+        display: flex;
+        max-width: 1300px;
+        margin: 24px auto;
+        gap: 24px;
+        padding: 0 20px;
+    }
+
+    .admin-nav {
+        width: 230px;
+        flex-shrink: 0;
+        background: #fff;
+        border-radius: 14px;
+        padding: 12px;
+        box-shadow: 0 2px 12px rgba(0,0,0,.06);
+        height: fit-content;
+    }
+
+    .admin-nav-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        border-radius: 10px;
+        cursor: pointer;
+        color: #546E7A;
+        font-weight: 500;
+        transition: background .15s;
+        position: relative;
+    }
+
+        .admin-nav-item:hover {
+            background: #F5F0FA;
+        }
+
+        .admin-nav-item.active {
+            background: #8b57b8;
+            color: #fff;
+        }
+
+    .admin-nav-badge {
+        margin-left: auto;
+        background: #e24646;
+        color: #fff;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 10px;
+    }
+
+    .admin-nav-item.active .admin-nav-badge {
+        background: rgba(255,255,255,.3);
+    }
+
+    .admin-page {
+        flex: 1;
+        background: #fff;
+        border-radius: 14px;
+        padding: 24px 28px;
+        box-shadow: 0 2px 12px rgba(0,0,0,.06);
+    }
+
+    .admin-page-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+        .admin-page-head h2 {
+            font-size: 18px;
+            color: #37474F;
+            margin: 0;
+        }
+
+    .admin-empty {
+        text-align: center;
+        padding: 60px 20px;
+        color: #90A4AE;
+    }
+
+    .req-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .req-card {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 18px;
+        border: 1px solid #ECEFF1;
+        border-radius: 12px;
+        transition: box-shadow .15s;
+    }
+
+        .req-card:hover {
+            box-shadow: 0 4px 16px rgba(0,0,0,.08);
+        }
+
+    .req-card-main {
+        display: flex;
+        gap: 14px;
+        align-items: flex-start;
+    }
+
+    .req-avatar {
+        width: 46px;
+        height: 46px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+        .req-avatar.new-user {
+            background: #43a047;
+        }
+
+        .req-avatar.new-menu {
+            background: #1565C0;
+        }
+
+    .req-name {
+        font-weight: 600;
+        color: #263238;
+        font-size: 15px;
+    }
+
+    .req-tag {
+        display: inline-block;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 6px;
+        margin-left: 8px;
+        letter-spacing: .5px;
+    }
+
+    .tag-new {
+        background: #E8F5E9;
+        color: #2e7d32;
+    }
+
+    .tag-menu {
+        background: #E3F2FD;
+        color: #1565C0;
+    }
+
+    .req-meta {
+        font-size: 12px;
+        color: #78909C;
+        margin-top: 3px;
+    }
+
+    .req-menus {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 8px;
+    }
+
+    .req-menu-chip {
+        font-size: 11px;
+        background: #FFF3E0;
+        color: #E65100;
+        padding: 3px 10px;
+        border-radius: 8px;
+        font-weight: 500;
+    }
+
+    /* ===== Update User (sync) ===== */
+    .sync-diff-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        margin-bottom: 4px;
+    }
+
+    .sync-field {
+        min-width: 90px;
+        font-weight: 700;
+        color: #455A64;
+    }
+
+    .sync-old {
+        color: #c62828;
+        text-decoration: line-through;
+    }
+
+    .sync-new {
+        color: #2e7d32;
+        font-weight: 600;
+    }
+
+    .approve-summary {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .summary-row {
+        display: flex;
+        justify-content: space-between;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #F0F0F0;
+    }
+
+    .summary-label {
+        color: #90A4AE;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .summary-menus {
+        padding-top: 4px;
+    }
+
+        .summary-menus > div {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+    .summary-note {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 8px;
+        background: #F0F4FF;
+        padding: 10px 14px;
+        border-radius: 8px;
+        font-size: 13px;
+        color: #455A64;
+    }
+</style>
+
+<!-- Approve Summary Modal -->
+<MudDialog @bind-Visible="_approveVisible" Options="_dlgOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.FactCheck" Class="mr-2" />สรุปการอนุมัติ
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_selected != null)
+        {
+            <div class="approve-summary">
+                <div class="summary-row">
+                    <span class="summary-label">ประเภท</span>
+                    <span class="req-tag @(_selected.IsNewUser ? "tag-new" : "tag-menu")">@_selected.RequestType</span>
+                </div>
+                <div class="summary-row"><span class="summary-label">ชื่อ-สกุล</span><span>@_selected.FullName</span></div>
+                <div class="summary-row"><span class="summary-label">User Name</span><span>@_selected.UserName</span></div>
+                <div class="summary-row"><span class="summary-label">รหัสพนักงาน</span><span>@_selected.EmpId</span></div>
+                <div class="summary-menus">
+                    <span class="summary-label">เมนูที่จะอนุมัติ</span>
+                    <div>
+                        @foreach (var m in _selected.PendingMenus)
+                        {
+                            <span class="req-menu-chip">@m</span>
+                        }
+                    </div>
+                </div>
+                <div class="summary-note">
+                    <MudIcon Icon="@Icons.Material.Filled.Info" Style="font-size:16px; color:#1565C0;" />
+                    เมื่ออนุมัติ สถานะจะเปลี่ยนจาก 50 → 1 และบันทึกวันเวลาอนุมัติ
+                </div>
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _approveVisible = false)">ยกเลิก</MudButton>
+        <MudButton Color="Color.Success" Variant="Variant.Filled"
+                   OnClick="ConfirmApprove" Disabled="_approving">
+            @if (_approving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            ยืนยันอนุมัติ
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private string _activeMenu = "newuser";
+    private bool _loading = true;
+    private List<PendingRequestDto> _pending = new();
+
+    private bool _approveVisible = false;
+    private bool _approving = false;
+    private PendingRequestDto? _selected;
+    private readonly DialogOptions _dlgOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
+
+    // Update User (sync)
+    private List<UserSyncDto> _sync = new();
+    private bool _syncLoading = false;
+    private bool _syncLoadedOnce = false;
+    private string? _syncingUser;
+
+    private HashSet<string> _selectedUsers = new();
+    private bool _selectAll = false;
+    private bool _bulkSyncing = false;
+
+    protected override async Task OnInitializedAsync() => await LoadData();
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        try { _pending = await AdminSvc.GetPendingAsync(); }
+        catch { Snackbar.Add("โหลดข้อมูลไม่สำเร็จ", Severity.Error); }
+        finally { _loading = false; }
+    }
+
+    private void OpenApproveDialog(PendingRequestDto r)
+    {
+        _selected = r;
+        _approveVisible = true;
+    }
+
+    private async Task ConfirmApprove()
+    {
+        if (_selected == null) return;
+        _approving = true;
+        try
+        {
+            var ok = await AdminSvc.ApproveAsync(_selected.UserName);
+            if (ok)
+            {
+                Snackbar.Add($"อนุมัติ {_selected.FullName} สำเร็จ", Severity.Success);
+                _approveVisible = false;
+                await LoadData();
+            }
+            else Snackbar.Add("อนุมัติไม่สำเร็จ", Severity.Error);
+        }
+        catch { Snackbar.Add("เกิดข้อผิดพลาด", Severity.Error); }
+        finally { _approving = false; }
+    }
+
+    // ===== Update User =====
+    private async Task OpenUpdateUserTab()
+    {
+        _activeMenu = "updateuser";
+        if (!_syncLoadedOnce)   // โหลดครั้งแรกอัตโนมัติ
+            await LoadSyncData();
+    }
+
+    private async Task LoadSyncData()
+    {
+        _syncLoading = true;
+        try
+        {
+            _sync = await AdminSvc.GetUsersToSyncAsync();
+            _syncLoadedOnce = true;
+            _selectedUsers.Clear();   // เพิ่มบรรทัดนี้
+            _selectAll = false;       // เพิ่มบรรทัดนี้
+        }
+        catch { Snackbar.Add("โหลดข้อมูล HRMS ไม่สำเร็จ", Severity.Error); }
+        finally { _syncLoading = false; }
+    }
+
+    private async Task SyncUser(string userName)
+    {
+        _syncingUser = userName;
+        try
+        {
+            var ok = await AdminSvc.SyncUserAsync(userName);
+            if (ok)
+            {
+                Snackbar.Add("อัปเดตสำเร็จ", Severity.Success);
+                await LoadSyncData();
+            }
+            else Snackbar.Add("อัปเดตไม่สำเร็จ", Severity.Error);
+        }
+        catch { Snackbar.Add("เกิดข้อผิดพลาด", Severity.Error); }
+        finally { _syncingUser = null; }
+    }
+    private static string OldVal(UserSyncDto d, string f) => f switch
+    {
+        "fname" => d.OldFName,
+        "lname" => d.OldLName,
+        "email" => d.OldEmail,
+        "dept_code" => d.OldDeptCode,
+        "position_id" => d.OldPositionId?.ToString() ?? "-",
+        _ => ""
+    };
+
+    private static string NewVal(UserSyncDto d, string f) => f switch
+    {
+        "fname" => d.NewFName,
+        "lname" => d.NewLName,
+        "email" => d.NewEmail,
+        "dept_code" => d.NewDeptCode,
+        "position_id" => $"{d.NewPositionId} ({d.NewPosnName})",
+        _ => ""
+    };
+
+    private void ToggleSelectAll(bool value)
+    {
+        _selectAll = value;
+        if (value)
+            _selectedUsers = _sync.Select(s => s.UserName).ToHashSet();
+        else
+            _selectedUsers.Clear();
+    }
+
+    private void ToggleRow(string userName, bool value)
+    {
+        if (value) _selectedUsers.Add(userName);
+        else _selectedUsers.Remove(userName);
+
+        _selectAll = _sync.Count > 0 && _selectedUsers.Count == _sync.Count;
+    }
+
+    private async Task SyncSelected()
+    {
+        if (_selectedUsers.Count == 0) return;
+        _bulkSyncing = true;
+        try
+        {
+            var n = await AdminSvc.SyncUsersAsync(_selectedUsers.ToList());
+            Snackbar.Add($"อัปเดตสำเร็จ {n} รายการ", Severity.Success);
+            _selectedUsers.Clear();
+            _selectAll = false;
+            await LoadSyncData();
+        }
+        catch { Snackbar.Add("อัปเดตไม่สำเร็จ", Severity.Error); }
+        finally { _bulkSyncing = false; }
+    }
+}

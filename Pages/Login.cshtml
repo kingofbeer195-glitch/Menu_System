@@ -1,0 +1,1497 @@
+﻿@page "/Login"
+@model LoginModel
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ENG4 System - เข้าสู่ระบบ</title>
+    <style>
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'THSarabunNew', Tahoma, Arial, sans-serif;
+            background: linear-gradient(135deg, #0D47A1 0%, #1565C0 50%, #1976D2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .login-wrapper {
+            width: 100%;
+            max-width: 420px;
+        }
+
+        .login-card {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 48px 40px 40px;
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.35);
+        }
+
+        .logo-section {
+            text-align: center;
+            margin-bottom: 36px;
+        }
+
+        .logo-circle {
+            width: 72px;
+            height: 72px;
+            /* background: linear-gradient(135deg, #1565C0, #1976D2); */
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+            /* box-shadow: 0 8px 24px rgba(21, 101, 192, 0.4); */
+        }
+
+            .logo-circle svg {
+                width: 36px;
+                height: 36px;
+                fill: white;
+            }
+
+        .site-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #1A237E;
+            line-height: 1.2;
+            margin-bottom: 4px;
+        }
+
+        .site-subtitle {
+            font-size: 14px;
+            color: #78909C;
+            font-weight: 400;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #455A64;
+            margin-bottom: 6px;
+            letter-spacing: 0.3px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1.5px solid #CFD8DC;
+            border-radius: 8px;
+            font-size: 15px;
+            font-family: inherit;
+            color: #263238;
+            background: #FAFAFA;
+            transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+            outline: none;
+        }
+
+            .form-control:focus {
+                border-color: #1976D2;
+                background: #ffffff;
+                box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.15);
+            }
+
+            .form-control::placeholder {
+                color: #B0BEC5;
+            }
+
+        .btn-login {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #1565C0, #1976D2);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+            box-shadow: 0 4px 16px rgba(21, 101, 192, 0.4);
+            margin-top: 8px;
+            letter-spacing: 0.5px;
+        }
+
+            .btn-login:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 6px 20px rgba(21, 101, 192, 0.5);
+            }
+
+            .btn-login:active {
+                transform: translateY(0);
+                opacity: 0.92;
+            }
+
+        .error-alert {
+            background: #FFEBEE;
+            border: 1px solid #EF9A9A;
+            border-left: 4px solid #F44336;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            color: #C62828;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .footer-text {
+            text-align: center;
+            margin-top: 24px;
+            color: #90A4AE;
+            font-size: 12px;
+        }
+
+        .divider {
+            height: 1px;
+            background: #ECEFF1;
+            margin: 24px 0;
+        }
+    </style>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-image: url('images/BG_sky.jpg');
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 120%;
+            transform: rotate(-45deg);
+            z-index: 0;
+        }
+
+        .star {
+            --star-color: #ffffff;
+            --star-tail-length: 6em;
+            --star-tail-height: 2px;
+            --star-width: calc(var(--star-tail-length) / 6);
+            --fall-duration: 9s;
+            --tail-fade-duration: var(--fall-duration);
+            position: absolute;
+            top: var(--top-offset);
+            left: 0;
+            width: var(--star-tail-length);
+            height: var(--star-tail-height);
+            color: var(--star-color);
+            background: linear-gradient(45deg, currentColor, transparent);
+            border-radius: 50%;
+            filter: drop-shadow(0 0 6px currentColor);
+            transform: translate3d(104em, 0, 0);
+            animation: fall var(--fall-duration) var(--fall-delay) linear infinite, tail-fade var(--tail-fade-duration) var(--fall-delay) ease-out infinite;
+        }
+
+        @@media screen and (max-width: 750px) {
+            .star
+
+        {
+            animation: fall var(--fall-duration) var(--fall-delay) linear infinite;
+        }
+
+        }
+
+        .star:nth-child(1) {
+            --star-tail-length: 6.05em;
+            --top-offset: 29vh;
+            --fall-duration: 6.689s;
+            --fall-delay: 2.349s;
+        }
+
+        .star:nth-child(2) {
+            --star-tail-length: 6.3em;
+            --top-offset: 10.11vh;
+            --fall-duration: 9.373s;
+            --fall-delay: 2.002s;
+        }
+
+        .star:nth-child(3) {
+            --star-tail-length: 6.6em;
+            --top-offset: 64.31vh;
+            --fall-duration: 7.247s;
+            --fall-delay: 5.965s;
+        }
+
+        .star:nth-child(4) {
+            --star-tail-length: 5.72em;
+            --top-offset: 38.39vh;
+            --fall-duration: 10.005s;
+            --fall-delay: 1.312s;
+        }
+
+        .star:nth-child(5) {
+            --star-tail-length: 7.22em;
+            --top-offset: 60.24vh;
+            --fall-duration: 8.759s;
+            --fall-delay: 4.696s;
+        }
+
+        .star:nth-child(6) {
+            --star-tail-length: 5.13em;
+            --top-offset: 31.47vh;
+            --fall-duration: 7.826s;
+            --fall-delay: 9.688s;
+        }
+
+        .star:nth-child(7) {
+            --star-tail-length: 5.48em;
+            --top-offset: 31.17vh;
+            --fall-duration: 9.656s;
+            --fall-delay: 6.557s;
+        }
+
+        .star:nth-child(8) {
+            --star-tail-length: 6.69em;
+            --top-offset: 19.83vh;
+            --fall-duration: 8.88s;
+            --fall-delay: 4.59s;
+        }
+
+        .star:nth-child(9) {
+            --star-tail-length: 6.43em;
+            --top-offset: 5.26vh;
+            --fall-duration: 7.584s;
+            --fall-delay: 2.338s;
+        }
+
+        .star:nth-child(10) {
+            --star-tail-length: 6.61em;
+            --top-offset: 33.81vh;
+            --fall-duration: 6.878s;
+            --fall-delay: 4.538s;
+        }
+
+        .star:nth-child(11) {
+            --star-tail-length: 5.71em;
+            --top-offset: 28.47vh;
+            --fall-duration: 8.924s;
+            --fall-delay: 9.422s;
+        }
+
+        .star:nth-child(12) {
+            --star-tail-length: 6.77em;
+            --top-offset: 36.46vh;
+            --fall-duration: 9.929s;
+            --fall-delay: 8.446s;
+        }
+
+        .star:nth-child(13) {
+            --star-tail-length: 6.85em;
+            --top-offset: 70.94vh;
+            --fall-duration: 7.412s;
+            --fall-delay: 9.328s;
+        }
+
+        .star:nth-child(14) {
+            --star-tail-length: 6.5em;
+            --top-offset: 6.32vh;
+            --fall-duration: 9.656s;
+            --fall-delay: 2.841s;
+        }
+
+        .star:nth-child(15) {
+            --star-tail-length: 6.76em;
+            --top-offset: 12.69vh;
+            --fall-duration: 7.49s;
+            --fall-delay: 9.042s;
+        }
+
+        .star:nth-child(16) {
+            --star-tail-length: 5.43em;
+            --top-offset: 85.62vh;
+            --fall-duration: 11.201s;
+            --fall-delay: 3.813s;
+        }
+
+        .star:nth-child(17) {
+            --star-tail-length: 6.66em;
+            --top-offset: 13.26vh;
+            --fall-duration: 10.679s;
+            --fall-delay: 4.015s;
+        }
+
+        .star:nth-child(18) {
+            --star-tail-length: 6.93em;
+            --top-offset: 78.39vh;
+            --fall-duration: 8.363s;
+            --fall-delay: 2.262s;
+        }
+
+        .star:nth-child(19) {
+            --star-tail-length: 6.07em;
+            --top-offset: 10.8vh;
+            --fall-duration: 8.792s;
+            --fall-delay: 2.483s;
+        }
+
+        .star:nth-child(20) {
+            --star-tail-length: 5.83em;
+            --top-offset: 32.43vh;
+            --fall-duration: 11.244s;
+            --fall-delay: 5.456s;
+        }
+
+        .star:nth-child(21) {
+            --star-tail-length: 5.19em;
+            --top-offset: 58.6vh;
+            --fall-duration: 8.38s;
+            --fall-delay: 6.132s;
+        }
+
+        .star:nth-child(22) {
+            --star-tail-length: 5.34em;
+            --top-offset: 79.21vh;
+            --fall-duration: 11.088s;
+            --fall-delay: 1.966s;
+        }
+
+        .star:nth-child(23) {
+            --star-tail-length: 5.37em;
+            --top-offset: 42.28vh;
+            --fall-duration: 6.442s;
+            --fall-delay: 4.679s;
+        }
+
+        .star:nth-child(24) {
+            --star-tail-length: 6.63em;
+            --top-offset: 34.98vh;
+            --fall-duration: 10.608s;
+            --fall-delay: 3.609s;
+        }
+
+        .star:nth-child(25) {
+            --star-tail-length: 5.25em;
+            --top-offset: 20.07vh;
+            --fall-duration: 6.201s;
+            --fall-delay: 9.399s;
+        }
+
+        .star:nth-child(26) {
+            --star-tail-length: 5.75em;
+            --top-offset: 10.68vh;
+            --fall-duration: 9.648s;
+            --fall-delay: 3.501s;
+        }
+
+        .star:nth-child(27) {
+            --star-tail-length: 7.08em;
+            --top-offset: 79.44vh;
+            --fall-duration: 10.456s;
+            --fall-delay: 6.76s;
+        }
+
+        .star:nth-child(28) {
+            --star-tail-length: 5.95em;
+            --top-offset: 14.52vh;
+            --fall-duration: 9.033s;
+            --fall-delay: 8.656s;
+        }
+
+        .star:nth-child(29) {
+            --star-tail-length: 5.72em;
+            --top-offset: 33.52vh;
+            --fall-duration: 9.78s;
+            --fall-delay: 9.688s;
+        }
+
+        .star:nth-child(30) {
+            --star-tail-length: 5.74em;
+            --top-offset: 9.07vh;
+            --fall-duration: 8.412s;
+            --fall-delay: 3.17s;
+        }
+
+        .star:nth-child(31) {
+            --star-tail-length: 5.23em;
+            --top-offset: 48.17vh;
+            --fall-duration: 8.192s;
+            --fall-delay: 6.54s;
+        }
+
+        .star:nth-child(32) {
+            --star-tail-length: 6.04em;
+            --top-offset: 28.25vh;
+            --fall-duration: 10.503s;
+            --fall-delay: 0.015s;
+        }
+
+        .star:nth-child(33) {
+            --star-tail-length: 6.27em;
+            --top-offset: 6.58vh;
+            --fall-duration: 10.053s;
+            --fall-delay: 3.643s;
+        }
+
+        .star:nth-child(34) {
+            --star-tail-length: 5.69em;
+            --top-offset: 12.6vh;
+            --fall-duration: 7.021s;
+            --fall-delay: 5.789s;
+        }
+
+        .star:nth-child(35) {
+            --star-tail-length: 7.41em;
+            --top-offset: 34.93vh;
+            --fall-duration: 9.189s;
+            --fall-delay: 1.298s;
+        }
+
+        .star:nth-child(36) {
+            --star-tail-length: 5.14em;
+            --top-offset: 20.69vh;
+            --fall-duration: 10.222s;
+            --fall-delay: 8.296s;
+        }
+
+        .star:nth-child(37) {
+            --star-tail-length: 5.99em;
+            --top-offset: 27.12vh;
+            --fall-duration: 10.59s;
+            --fall-delay: 2.059s;
+        }
+
+        .star:nth-child(38) {
+            --star-tail-length: 7.29em;
+            --top-offset: 46.48vh;
+            --fall-duration: 9.894s;
+            --fall-delay: 1.372s;
+        }
+
+        .star:nth-child(39) {
+            --star-tail-length: 7.22em;
+            --top-offset: 91.33vh;
+            --fall-duration: 11.474s;
+            --fall-delay: 2.42s;
+        }
+
+        .star:nth-child(40) {
+            --star-tail-length: 5.95em;
+            --top-offset: 66.93vh;
+            --fall-duration: 7.451s;
+            --fall-delay: 5.676s;
+        }
+
+        .star:nth-child(41) {
+            --star-tail-length: 5.58em;
+            --top-offset: 17.43vh;
+            --fall-duration: 9.452s;
+            --fall-delay: 7.791s;
+        }
+
+        .star:nth-child(42) {
+            --star-tail-length: 5.81em;
+            --top-offset: 98.54vh;
+            --fall-duration: 7.702s;
+            --fall-delay: 0.953s;
+        }
+
+        .star:nth-child(43) {
+            --star-tail-length: 6.09em;
+            --top-offset: 20.86vh;
+            --fall-duration: 6.193s;
+            --fall-delay: 7.884s;
+        }
+
+        .star:nth-child(44) {
+            --star-tail-length: 5.62em;
+            --top-offset: 67.86vh;
+            --fall-duration: 8.63s;
+            --fall-delay: 5.144s;
+        }
+
+        .star:nth-child(45) {
+            --star-tail-length: 5.54em;
+            --top-offset: 65.2vh;
+            --fall-duration: 7.333s;
+            --fall-delay: 8.194s;
+        }
+
+        .star:nth-child(46) {
+            --star-tail-length: 7.46em;
+            --top-offset: 87.24vh;
+            --fall-duration: 11.667s;
+            --fall-delay: 4.119s;
+        }
+
+        .star:nth-child(47) {
+            --star-tail-length: 7.44em;
+            --top-offset: 98.15vh;
+            --fall-duration: 7.185s;
+            --fall-delay: 4.946s;
+        }
+
+        .star:nth-child(48) {
+            --star-tail-length: 5.7em;
+            --top-offset: 0.58vh;
+            --fall-duration: 6.647s;
+            --fall-delay: 4.869s;
+        }
+
+        .star:nth-child(49) {
+            --star-tail-length: 7em;
+            --top-offset: 92.89vh;
+            --fall-duration: 6.62s;
+            --fall-delay: 0.024s;
+        }
+
+        .star:nth-child(50) {
+            --star-tail-length: 5.29em;
+            --top-offset: 4vh;
+            --fall-duration: 6.944s;
+            --fall-delay: 5.623s;
+        }
+
+        .star::before, .star::after {
+            position: absolute;
+            content: "";
+            top: 0;
+            left: calc(var(--star-width) / -2);
+            width: var(--star-width);
+            height: 100%;
+            background: linear-gradient(45deg, transparent, currentColor, transparent);
+            border-radius: inherit;
+            animation: blink 2s linear infinite;
+        }
+
+        .star::before {
+            transform: rotate(45deg);
+        }
+
+        .star::after {
+            transform: rotate(-45deg);
+        }
+
+        @@keyframes fall {
+            to
+
+        {
+            transform: translate3d(-30em, 0, 0);
+        }
+
+        }
+
+        @@keyframes tail-fade {
+            0%, 50%
+
+        {
+            width: var(--star-tail-length);
+            opacity: 1;
+        }
+
+        60%, 70% {
+            width: 0;
+            opacity: 0.2;
+        }
+
+        100% {
+            width: 0;
+            opacity: 0;
+        }
+
+        }
+
+        @@keyframes blink {
+            50%
+
+        {
+            opacity: 0.6;
+        }
+
+        }
+
+        /* ทำให้ form login อยู่หน้าดาวตก */
+        .login-content {
+            position: relative;
+            z-index: 1;
+        }
+    </style>
+    <style>
+        .fp-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.55);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .fp-card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 32px;
+            width: 380px;
+            max-width: 90%;
+            position: relative;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+        }
+
+        .fp-close {
+            position: absolute;
+            top: 12px;
+            right: 16px;
+            border: none;
+            background: none;
+            font-size: 26px;
+            cursor: pointer;
+            color: #999;
+        }
+
+        .fp-head {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .fp-icon {
+            font-size: 42px;
+            margin-bottom: 8px;
+        }
+
+        .fp-head h3 {
+            margin: 4px 0;
+            color: #1a2a6c;
+        }
+
+        .fp-head p {
+            color: #888;
+            font-size: 13px;
+            margin: 4px 0;
+        }
+
+        .fp-timer {
+            color: #d32f2f !important;
+            font-weight: 600;
+        }
+
+        .fp-input {
+            width: 100%;
+            padding: 8px 10px;
+            margin-bottom: 6px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+
+        .fp-readOnly {
+            background: #e9e9e9;
+        }
+
+            .fp-input:focus {
+                outline: none;
+                border-color: #1a2a6c;
+            }
+
+        .fp-otp {
+            text-align: center;
+            letter-spacing: 12px;
+            font-size: 22px;
+            font-weight: bold;
+        }
+
+        .fp-btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            background: #1a2a6c;
+            color: #fff;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 15px;
+            margin-top: 6px;
+        }
+
+            .fp-btn:hover {
+                background: #2c3e9f;
+            }
+
+            .fp-btn:disabled {
+                background: #aaa;
+                cursor: not-allowed;
+            }
+
+        .fp-btn-text {
+            width: 100%;
+            padding: 8px;
+            border: none;
+            background: none;
+            color: #1a2a6c;
+            cursor: pointer;
+            margin-top: 4px;
+            text-decoration: underline;
+        }
+
+        .fp-error {
+            color: #d32f2f;
+            font-size: 13px;
+            text-align: center;
+            margin-top: 12px;
+            font-weight: 600;
+        }
+        /* ลิงก์เปิด modal */
+        .fp-link {
+            color: #bd5b5b;
+            font-size: 13px;
+            cursor: pointer;
+            text-decoration: underline;
+            background: none;
+            border: none;
+        }
+
+        /* ===== Loading Spinner ===== */
+        .btn-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.4);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: btn-spin 0.6s linear infinite;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+
+        @@keyframes btn-spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .btn-login:disabled,
+        .fp-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .reg-field {
+            margin-bottom: 10px;
+            width:100%;
+        }
+
+            .reg-field label {
+                display: block;
+                font-size: 12px;
+                color: #666;
+                margin-bottom: 4px;
+                font-weight: 600;
+            }
+
+        .reg-menu-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            padding: 8px 10px;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            margin-bottom: 6px;
+        }
+
+            .reg-menu-item input[type=checkbox] {
+                margin-top: 3px;
+                width: 16px;
+                height: 16px;
+            }
+
+            .reg-menu-item.granted {
+                background: #f1f8e9;
+                border-color: #c5e1a5;
+            }
+
+        .reg-menu-label {
+            font-size: 13px;
+        }
+
+            .reg-menu-label .name {
+                font-weight: 600;
+                color: #333;
+            }
+
+            .reg-menu-label .detail {
+                color: #999;
+                font-size: 12px;
+            }
+
+            .reg-menu-label .badge {
+                font-size: 10px;
+                background: #e3f2fd;
+                color: #1565c0;
+                padding: 1px 6px;
+                border-radius: 8px;
+                margin-left: 6px;
+            }
+
+        .reg-grid2 {
+            display: flex;
+            gap: 10px;
+        }
+
+        .pw-info {
+            display: inline-block;
+            margin-left: 6px;
+            color: #1a2a6c;
+            font-size: 12px;
+            cursor: help;
+            position: relative;
+            /* vertical-align: middle; */
+            background: #c7cbf7;
+            padding: 2px 8px;
+            border-radius: 50%;
+        }
+
+        .pw-tooltip {
+            display: none;
+            position: absolute;
+            left: 50%;
+            bottom: 130%;
+            transform: translateX(-50%);
+            width: 230px;
+            background: #263238;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 400;
+            line-height: 1.7;
+            text-align: left;
+            padding: 10px 12px;
+            border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+            z-index: 10000;
+            white-space: normal;
+        }
+
+            /* ลูกศรชี้ลง */
+            .pw-tooltip::after {
+                content: "";
+                position: absolute;
+                top: 100%;
+                left: 50%;
+                transform: translateX(-50%);
+                border: 6px solid transparent;
+                border-top-color: #263238;
+            }
+
+        .pw-info:hover .pw-tooltip,
+        .pw-info:focus .pw-tooltip {
+            display: block;
+        }
+
+    </style>
+    <style>
+        .pw-wrap {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+            .pw-wrap .fp-input {
+                padding-right: 40px; /* เว้นที่ให้ปุ่มตา */
+                margin-bottom: 0;
+                flex: 1;
+            }
+
+        .pw-eye {
+            position: absolute;
+            right: 8px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 4px;
+            opacity: 0.6;
+            user-select: none;
+        }
+
+            .pw-eye:hover {
+                opacity: 1;
+            }
+    </style>
+    <script>  
+        function showPw(id) { document.getElementById(id).type = 'text'; }
+        function hidePw(id) { document.getElementById(id).type = 'password'; }
+    </script>
+</head>
+<body>
+    <div class="stars">
+        <div class="star"></div><div class="star"></div><div class="star"></div>
+        <div class="star"></div><div class="star"></div><div class="star"></div>
+        <div class="star"></div><div class="star"></div><div class="star"></div>
+        <div class="star"></div><div class="star"></div><div class="star"></div>
+        <div class="star"></div><div class="star"></div><div class="star"></div>
+        <div class="star"></div><div class="star"></div><div class="star"></div>
+        <div class="star"></div><div class="star"></div><div class="star"></div>
+        <div class="star"></div><div class="star"></div><div class="star"></div>
+        <div class="star"></div><div class="star"></div><div class="star"></div>
+        <div class="star"></div><div class="star"></div><div class="star"></div>
+        <div class="star"></div><div class="star"></div><div class="star"></div>
+        <div class="star"></div><div class="star"></div><div class="star"></div>
+        <div class="star"></div><div class="star"></div><div class="star"></div>
+        <div class="star"></div><div class="star"></div><div class="star"></div>
+        <div class="star"></div><div class="star"></div><div class="star"></div>
+        <div class="star"></div><div class="star"></div><div class="star"></div>
+        <div class="star"></div><div class="star"></div>
+    </div>
+
+    <div class="login-wrapper" style="z-index:100;">
+        <div class="login-card">
+            <div class="logo-section">
+                <div class="logo-circle">
+                    @* <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                    </svg> *@
+                    <img src="images/gear1.png" alt="Logo" style="width:100px; height:100px; object-fit:contain;" />
+                </div>
+                <div class="site-title">ENG4 System Management</div>
+                <div class="site-subtitle">Management Portal — กรุณาเข้าสู่ระบบ</div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+            {
+                <div class="error-alert">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="#F44336">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
+                    </svg>
+                    @Model.ErrorMessage
+                </div>
+            }
+
+            <form method="post" autocomplete="off">
+                @Html.AntiForgeryToken()
+
+                <div class="form-group">
+                    <label class="form-label" for="userId">Username / รหัสผู้ใช้</label>
+                    <input id="userId" name="UserId" type="text" class="form-control" autocomplete="off"
+                           placeholder="กรอก Username" value="@Model.UserId" autofocus />
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="password">Password / รหัสผ่าน</label>
+                    <input id="password" name="Password" type="password" class="form-control" autocomplete="current-password"
+                           placeholder="กรอก Password" />
+                </div>
+
+                <button type="submit" class="btn-login" id="loginBtn">เข้าสู่ระบบ</button>
+                
+            </form>
+
+            <div style="text-align:center; margin-top:12px;">
+                <button type="button" class="fp-link" onclick="openRegister()">Register</button>
+                <span style="color:#fff; margin:0 8px;">|</span>
+                <button type="button" class="fp-link" onclick="openForgot()">Forget Password</button>
+                <span style="color:#fff; margin:0 8px;">|</span>
+                <button type="button" class="fp-link" onclick="openReset()">Change Password</button>
+            </div>
+
+            <div class="footer-text">
+                © @DateTime.Now.Year ENG4 Engineering Department
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Register Modal ===== -->
+    <div id="registerModal" class="fp-overlay" style="display:none;">
+        <div class="fp-card" style="width:600px; max-height:90vh; overflow-y:auto;">
+            <button class="fp-close" onclick="closeRegister()">&times;</button>
+
+            <div class="fp-head">
+                <div class="fp-icon">📝</div>
+                <h3>ลงทะเบียนผู้ใช้งาน</h3>
+                <p>กรอกรหัสพนักงานเพื่อค้นหาข้อมูล</p>
+            </div>
+
+            <!-- Step 1: ค้นหา -->
+            <div id="regSearchRow" style="display:flex; gap:8px;">
+                <input type="text" id="regEmpId" class="fp-input" placeholder="รหัสพนักงาน (Emp Id)" style="margin-bottom:0; background:#d2e6fc;" />
+                <button class="fp-btn" id="regSearchBtn" onclick="regLookup()" style="width:auto; white-space:nowrap; margin-top:0;">ค้นหา</button>
+            </div>
+
+            <!-- Step 2: ข้อมูล + สิทธิ์ (ซ่อนก่อน) -->
+            <div id="regDetail" style="display:none; margin-top:16px;">
+                <div class="reg-grid2">
+                    <div class="reg-field"><label>Name-Surname</label><input type="text" id="regName" class="fp-input fp-readOnly" readonly /></div>
+                    <div class="reg-field"><label>Position</label><input type="text" id="regPosition" class="fp-input fp-readOnly" readonly /></div>
+                </div>
+                <div class="reg-grid2">
+                    <div class="reg-field"><label>Division</label><input type="text" id="regDiv" class="fp-input fp-readOnly" readonly /></div>
+                    <div class="reg-field"><label>Department</label><input type="text" id="regDept" class="fp-input fp-readOnly" readonly /></div>
+                </div>
+                <div class="reg-grid2">
+                    <div class="reg-field"><label>Tel (ติดต่อภายใน)</label><input type="text" id="regTel" class="fp-input" placeholder="เบอร์ภายใน" style="background:#d2e6fc;" /></div>
+                    <div class="reg-field"><label>Email</label><input type="text" id="regEmail" class="fp-input fp-readOnly" readonly /></div>
+                </div>
+                <div class="reg-field">
+                    <label>
+                        <span class="label-highlight fp-readOnly" style="background: #ff0000; color: #fff;">User Name</span>
+                    </label>
+                    <input type="text" id="regUserName" class="fp-input" readonly style="background:#d2e6fc;" /></div>
+
+                <!-- เฉพาะ New User -->
+                <div id="regNewUserFields" class="reg-grid2">
+                    <div class="reg-field">
+                        <label>
+                            <span class="label-highlight" style="background: #ff0000; color: #fff;">Password *</span>    
+                            <span class="pw-info" tabindex="0">
+                                ℹ
+                                <span class="pw-tooltip">
+                                    <b>กฎการตั้งรหัสผ่าน:</b><br>
+                                    • อย่างน้อย 6 ตัวอักษร<br>
+                                    • ตัวพิมพ์เล็ก (a-z)<br>
+                                    • ตัวพิมพ์ใหญ่ (A-Z)<br>
+                                    • ตัวเลข (0-9)<br>
+                                    • อักขระพิเศษ (! @@# $ % ^ &amp; *)
+                                </span>
+                            </span>
+                        </label>
+                        @* <div class="pw-wrap"> *@
+                            <input type="password" id="regPass" class="fp-input" placeholder="รหัสผ่าน" style="background:#f4f8ac;" />
+                            @* <button type="button" class="pw-eye" onmousedown="showPw('regPass')" onmouseup="hidePw('regPass')"
+                                    onmouseleave="hidePw('regPass')" ontouchstart="showPw('regPass')" ontouchend="hidePw('regPass')">
+                                👁
+                            </button> *@
+                        @* </div> *@
+                    </div>                    
+                    <div class="reg-field">
+                        <label>
+                            <span class="label-highlight" style="background: #ff0000; color: #fff;">Confirm Password *</span>
+                        </label>
+                        @* <div class="pw-wrap"> *@
+                            <input type="password" id="regConfirm" class="fp-input" placeholder="ยืนยันรหัสผ่าน" style="background:#f4f8ac;" />
+                            @* <button type="button" class="pw-eye" onmousedown="showPw('regPass')" onmouseup="hidePw('regPass')"
+                                    onmouseleave="hidePw('regPass')" ontouchstart="showPw('regPass')" ontouchend="hidePw('regPass')">
+                                👁
+                            </button> *@
+                        @* </div>                         *@
+                    </div>                    
+                </div>
+
+                <div style="margin-top:8px;">
+                    <label style="font-weight:600; color:#1a2a6c; font-size:14px;">เลือกเมนูที่ต้องการเข้าถึง</label>
+                    <div id="regMenuList" style="margin-top:8px;"></div>
+                </div>
+
+                <button class="fp-btn" id="regSubmitBtn" onclick="regSubmit()" style="margin-top:16px;">ลงทะเบียน</button>
+            </div>
+
+            <div id="regError" class="fp-error"></div>
+        </div>
+    </div>
+
+    <!-- ===== Forgot Password Modal ===== -->
+    <div id="forgotModal" class="fp-overlay" style="display:none;">
+        <div class="fp-card">
+            <button class="fp-close" onclick="closeForgot()">&times;</button>
+
+            <!-- Step 1 -->
+            <div id="fpStep1">
+                <div class="fp-head">
+                    <div class="fp-icon">🔑</div>
+                    <h3>ลืมรหัสผ่าน</h3>
+                    <p>กรอก Username เพื่อรับรหัสยืนยันทางอีเมล</p>
+                </div>
+                <input type="text" id="fpUser" class="fp-input" placeholder="Username" />
+                <button class="fp-btn" onclick="fpRequest()">ส่งรหัสยืนยัน</button>
+            </div>
+
+            <!-- Step 2 -->
+            <div id="fpStep2" style="display:none;">
+                <div class="fp-head">
+                    <div class="fp-icon">📧</div>
+                    <h3>กรอกรหัสยืนยัน</h3>
+                    <p>ส่งรหัส 6 หลักไปที่ <span id="fpEmail"></span> แล้ว</p>
+                    <p class="fp-timer">⏱ หมดอายุใน <span id="fpCountdown">5:00</span></p>
+                </div>
+                <input type="text" id="fpOtp" class="fp-input fp-otp"
+                       maxlength="6" placeholder="______" />
+                <button class="fp-btn" id="fpVerifyBtn" onclick="fpVerify()">ยืนยันรหัส</button>
+                <button class="fp-btn-text" id="fpResendBtn"
+                        onclick="fpRequest()" style="display:none;">
+                    ส่งรหัสใหม่
+                </button>
+            </div>
+
+            <!-- Step 3 -->
+            <div id="fpStep3" style="display:none;">
+                <div class="fp-head">
+                    <div class="fp-icon">🔒</div>
+                    <h3>ตั้งรหัสผ่านใหม่</h3>
+                </div>
+                <input type="password" id="fpNewPass" class="fp-input" placeholder="รหัสผ่านใหม่" />
+                <input type="password" id="fpConfirmPass" class="fp-input" placeholder="ยืนยันรหัสผ่านใหม่" />
+                <button class="fp-btn" onclick="fpSave()">บันทึกรหัสผ่านใหม่</button>
+            </div>
+
+            <div id="fpError" class="fp-error"></div>
+        </div>
+    </div>
+
+    <!-- ===== Reset Password Modal ===== -->
+    <div id="resetModal" class="fp-overlay" style="display:none;">
+        <div class="fp-card">
+            <button class="fp-close" onclick="closeReset()">&times;</button>
+
+            <div class="fp-head">
+                <div class="fp-icon">🔧</div>
+                <h3>เปลี่ยนรหัสผ่าน</h3>
+                <p>กรอกรหัสปัจจุบันเพื่อตั้งรหัสใหม่</p>
+            </div>
+
+            <input type="text" id="rpUser" class="fp-input" placeholder="Username" />
+            <input type="password" id="rpCurrent" class="fp-input" placeholder="รหัสผ่านปัจจุบัน" />
+            <input type="password" id="rpNew" class="fp-input" placeholder="รหัสผ่านใหม่" />
+            <input type="password" id="rpConfirm" class="fp-input" placeholder="ยืนยันรหัสผ่านใหม่" />
+
+            <button class="fp-btn" onclick="rpSave()">ยืนยันการเปลี่ยนรหัสผ่าน</button>
+            <div id="rpError" class="fp-error"></div>
+        </div>
+    </div>
+
+    <!-- ===== Register script ===== -->
+    <script>
+        let regIsNewUser = false;
+        let regEmpIdVal = '';
+
+        function openRegister() {
+            document.getElementById('registerModal').style.display = 'flex';
+            document.getElementById('regError').innerText = '';
+            document.getElementById('regDetail').style.display = 'none';
+            document.getElementById('regEmpId').value = '';
+            document.getElementById('regMenuList').innerHTML = '';
+        }
+        function closeRegister() {
+            document.getElementById('registerModal').style.display = 'none';
+        }
+        function regErr(msg) { document.getElementById('regError').innerText = msg || ''; }
+
+        async function regLookup() {
+            regErr('');
+            const empId = document.getElementById('regEmpId').value.trim();
+            if (!empId) { regErr('กรุณากรอกรหัสพนักงาน'); return; }
+
+            const btn = document.getElementById('regSearchBtn');
+            const original = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="btn-spinner"></span>';
+
+            try {
+                const res = await fetch('api/register/lookup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ empId: empId })
+                });
+                const d = await res.json();
+                if (!d.success) { regErr(d.message); return; }
+
+                regIsNewUser = d.isNewUser;
+                regEmpIdVal = d.empId;
+
+                document.getElementById('regName').value = d.fullName;
+                document.getElementById('regDiv').value = d.division;
+                document.getElementById('regDept').value = d.department;
+                document.getElementById('regPosition').value = d.position;
+                document.getElementById('regEmail').value = d.email;
+                document.getElementById('regUserName').value = d.userName;
+
+                // New user → โชว์ Tel + Password
+                document.getElementById('regNewUserFields').style.display =
+                    d.isNewUser ? 'flex' : 'none';
+
+                // render menu checkboxes
+                const list = document.getElementById('regMenuList');
+                list.innerHTML = '';
+                d.menus.forEach((m, i) => {
+                    const wrap = document.createElement('label');
+                    wrap.className = 'reg-menu-item' + (m.alreadyGranted ? ' granted' : '');
+                    wrap.innerHTML = `
+                        <input type="checkbox" value="${m.column}"
+                            ${m.alreadyGranted ? 'checked' : ''} />
+                        <span class="reg-menu-label">
+                            <span class="name">${m.name}</span>
+                            ${m.eng4Only ? '<span class="badge">ENG4</span>' : ''}
+                            ${m.alreadyGranted ? '<span class="badge" style="background:#e8f5e9;color:#2e7d32;">มีสิทธิ์แล้ว</span>' : ''}
+                            <br><span class="detail">${m.detail || ''}</span>
+                        </span>`;
+                    list.appendChild(wrap);
+                });
+
+                document.getElementById('regDetail').style.display = 'block';
+            } catch (err) {
+                regErr('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = original;
+            }
+        }
+
+                async function regSubmit() {
+            regErr('');
+
+            const checks = document.querySelectorAll('#regMenuList input[type=checkbox]:checked');
+            const selected = Array.from(checks).map(c => c.value);
+
+            if (selected.length === 0) { regErr('กรุณาเลือกเมนูที่ต้องการเข้าถึงอย่างน้อย 1 รายการ'); return; }
+
+            let tel = '', pass = '';
+            if (regIsNewUser) {
+                tel = document.getElementById('regTel').value.trim();  // Tel ไม่บังคับ
+                pass = document.getElementById('regPass').value;
+                const confirm = document.getElementById('regConfirm').value;
+
+                // ตรวจกฎ Password
+                const pwError = validatePassword(pass);
+                if (pwError) { regErr(pwError); return; }
+
+                if (pass !== confirm) { regErr('รหัสผ่านทั้งสองครั้งไม่ตรงกัน'); return; }
+            }
+
+            const btn = document.getElementById('regSubmitBtn');
+            const original = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="btn-spinner"></span>กำลังลงทะเบียน...';
+
+            try {
+                const res = await fetch('api/register/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        empId: regEmpIdVal,
+                        tel: tel,
+                        password: pass,
+                        selectedColumns: selected
+                    })
+                });
+                const d = await res.json();
+                if (!d.success) { regErr(d.message); return; }
+
+                alert(d.message + '\nUser Name: ' + d.userName);
+                closeRegister();
+            } catch (err) {
+                regErr('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = original;
+            }
+        }
+
+        // คืน error message ถ้าไม่ผ่าน, คืน '' ถ้าผ่าน
+        function validatePassword(pw) {
+            if (pw.length < 6) return 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร';
+            return '';
+        }
+
+    </script>
+
+    <!-- ===== Forgot Password Scrips ===== -->
+    <script>
+        let fpCountdownTimer = null;
+        let fpUserName = "";
+
+        function openForgot() {
+            document.getElementById('forgotModal').style.display = 'flex';
+            fpShowStep(1);
+            document.getElementById('fpError').innerText = '';
+        }
+        function closeForgot() {
+            document.getElementById('forgotModal').style.display = 'none';
+            if (fpCountdownTimer) clearInterval(fpCountdownTimer);
+        }
+        function fpShowStep(n) {
+            document.getElementById('fpStep1').style.display = n === 1 ? 'block' : 'none';
+            document.getElementById('fpStep2').style.display = n === 2 ? 'block' : 'none';
+            document.getElementById('fpStep3').style.display = n === 3 ? 'block' : 'none';
+        }
+        function fpErr(msg) {
+            document.getElementById('fpError').innerText = msg || '';
+        }
+
+        async function fpRequest() {
+            fpErr('');
+            const user = document.getElementById('fpUser').value.trim() || fpUserName;
+            if (!user) { fpErr('กรุณากรอก Username'); return; }
+            fpUserName = user;
+
+            // หา element ปุ่มที่กด (Step1 = ส่งรหัสยืนยัน, Step2 = ส่งใหม่)
+            const btn = event.currentTarget;
+            const original = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="btn-spinner"></span>กำลังส่ง...';
+
+            try {
+                const res = await fetch('api/forgot/request', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userName: user })
+                });
+                const data = await res.json();
+
+                if (!data.success) { fpErr(data.message); return; }
+
+                document.getElementById('fpEmail').innerText = data.maskedEmail;
+                fpShowStep(2);
+                fpStartCountdown();
+            } catch (err) {
+                fpErr('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = original;
+            }
+        }
+
+        async function fpVerify() {
+            fpErr('');
+            const otp = document.getElementById('fpOtp').value.trim();
+            if (otp.length !== 6) { fpErr('กรุณากรอกรหัส 6 หลัก'); return; }
+
+            const res = await fetch('api/forgot/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userName: fpUserName, otp: otp })
+            });
+            const data = await res.json();
+
+            if (!data.success) { fpErr('รหัสไม่ถูกต้องหรือหมดอายุ'); return; }
+
+            if (fpCountdownTimer) clearInterval(fpCountdownTimer);
+            fpShowStep(3);
+        }
+
+        async function fpSave() {
+            fpErr('');
+            const newPass = document.getElementById('fpNewPass').value;
+            const confirmPass = document.getElementById('fpConfirmPass').value;
+            const otp = document.getElementById('fpOtp').value.trim();
+
+            if (newPass.length < 4) { fpErr('รหัสผ่านต้องมีอย่างน้อย 4 ตัวอักษร'); return; }
+            if (newPass !== confirmPass) { fpErr('รหัสผ่านทั้งสองครั้งไม่ตรงกัน'); return; }
+
+            const res = await fetch('api/forgot/reset', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userName: fpUserName, otp: otp, newPassword: newPass })
+            });
+            const data = await res.json();
+
+            if (!data.success) { fpErr(data.message); return; }
+
+            alert('เปลี่ยนรหัสผ่านสำเร็จ! กรุณาเข้าสู่ระบบใหม่');
+            closeForgot();
+        }
+
+        function fpStartCountdown() {
+            let sec = 300;
+            const el = document.getElementById('fpCountdown');
+            const verifyBtn = document.getElementById('fpVerifyBtn');
+            const resendBtn = document.getElementById('fpResendBtn');
+            verifyBtn.disabled = false;
+            resendBtn.style.display = 'none';
+
+            if (fpCountdownTimer) clearInterval(fpCountdownTimer);
+            fpCountdownTimer = setInterval(() => {
+                sec--;
+                el.innerText = Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0');
+                if (sec <= 0) {
+                    clearInterval(fpCountdownTimer);
+                    el.innerText = 'หมดอายุ';
+                    verifyBtn.disabled = true;
+                    resendBtn.style.display = 'block';
+                }
+            }, 1000);
+        }
+    </script>
+
+    <!-- ===== Reset Password Scrips ===== -->
+    <script>
+
+        // function getApiUrl(path) {
+        //     const base = document.querySelector('base')?.getAttribute('href') || '/';
+        //     return base.replace(/\/$/, '') + '/' + path;
+        // }
+
+        function openReset() {
+            document.getElementById('resetModal').style.display = 'flex';
+            document.getElementById('rpError').innerText = '';
+            document.getElementById('rpUser').value = '';
+            document.getElementById('rpCurrent').value = '';
+            document.getElementById('rpNew').value = '';
+            document.getElementById('rpConfirm').value = '';
+        }
+        function closeReset() {
+            document.getElementById('resetModal').style.display = 'none';
+        }
+
+                async function rpSave() {
+            const errEl = document.getElementById('rpError');
+            errEl.innerText = '';
+
+            const user = document.getElementById('rpUser').value.trim();
+            const current = document.getElementById('rpCurrent').value;
+            const newPass = document.getElementById('rpNew').value;
+            const confirm = document.getElementById('rpConfirm').value;
+
+            if (!user) { errEl.innerText = 'กรุณากรอก Username'; return; }
+            if (!current) { errEl.innerText = 'กรุณากรอกรหัสผ่านปัจจุบัน'; return; }
+            if (newPass.length < 4) { errEl.innerText = 'รหัสผ่านใหม่ต้องมีอย่างน้อย 4 ตัวอักษร'; return; }
+            if (newPass !== confirm) { errEl.innerText = 'รหัสผ่านใหม่ทั้งสองครั้งไม่ตรงกัน'; return; }
+
+            const btn = event.currentTarget;
+            const original = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="btn-spinner"></span>กำลังบันทึก...';
+
+            try {
+                const res = await fetch('api/reset/change', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userName: user,
+                        currentPassword: current,
+                        newPassword: newPass
+                    })
+                });
+                const data = await res.json();
+
+                if (!data.success) { errEl.innerText = data.message; return; }
+
+                alert('เปลี่ยนรหัสผ่านสำเร็จ! กรุณาเข้าสู่ระบบใหม่');
+                closeReset();
+            } catch (err) {
+                errEl.innerText = 'เกิดข้อผิดพลาดในการเชื่อมต่อ';
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = original;
+            }
+        }
+    </script>
+
+    @* Login Loading *@
+    <script>
+        document.querySelector('form[method="post"]').addEventListener('submit', function () {
+            const btn = document.getElementById('loginBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="btn-spinner"></span>กำลังเข้าสู่ระบบ...';
+        });
+    </script>
+
+</body>
+</html>
