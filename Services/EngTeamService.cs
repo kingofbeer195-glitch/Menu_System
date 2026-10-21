@@ -6,6 +6,7 @@ namespace SystemAll.Services;
 
 // ============================================================
 //  ENG3,4 Team — จัดการ Team และกำหนด Team ให้พนักงาน
+//  1 คนอยู่ได้หลาย Team (ตาราง eng_team_member)
 //  ใช้ IDbContextFactory: สร้าง DbContext ใหม่ทุกครั้ง
 //  (กันข้อมูลค้าง/tracking ข้ามคำสั่งใน Blazor Server circuit)
 // ============================================================
@@ -21,18 +22,16 @@ public class EngTeamService
     public EngTeamService(IDbContextFactory<AppDbContext> factory) => _factory = factory;
 
     // ------------------------------------------------------------
-    //  รายชื่อพนักงาน ENG3,4 (status = 1, dept_code 5330/5390)
+    //  รายชื่อพนักงาน ENG3,4 (status = 1, dept_code 5330/5390) + Team ที่สังกัด
     // ------------------------------------------------------------
     public async Task<List<EngMemberDto>> GetMembersAsync()
     {
         await using var db = await _factory.CreateDbContextAsync();
 
-        var query =
+        var users = await (
             from u in db.SysUserMasters.AsNoTracking()
             where u.IsActive == ACTIVE
                && (u.DeptCode!.Trim() == DEPT_ENG3 || u.DeptCode!.Trim() == DEPT_ENG4)
-            join t in db.EngTeamMasters.AsNoTracking() on u.EngTeamId equals (int?)t.TeamId into tj
-            from t in tj.DefaultIfEmpty()
             join p in db.PositionMasters.AsNoTracking() on u.PositionId equals (int?)p.PositionId into pj
             from p in pj.DefaultIfEmpty()
             orderby u.EmpId
@@ -44,29 +43,62 @@ public class EngTeamService
                 LName = u.LName ?? "",
                 DeptCode = (u.DeptCode ?? "").Trim(),
                 Ext = u.Ext ?? "",
-                Position = p != null ? (p.PositionName ?? "") : "",
-                TeamId = u.EngTeamId,
-                TeamName = t != null ? t.TeamName : null
-            };
+                Position = p != null ? (p.PositionName ?? "") : ""
+            }).ToListAsync();
 
-        return await query.ToListAsync();
+        // Team ทั้งหมดของทุกคน (ดึงครั้งเดียวแล้วจับคู่ในหน่วยความจำ)
+        var links = await (
+            from m in db.EngTeamMembers.AsNoTracking()
+            join t in db.EngTeamMasters.AsNoTracking() on m.TeamId equals t.TeamId
+            select new { m.UserName, t.TeamId, t.TeamName }).ToListAsync();
+
+        var byUser = links
+            .GroupBy(l => l.UserName, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key,
+                          g => g.OrderBy(x => x.TeamName)
+                                .Select(x => new TeamRef(x.TeamId, x.TeamName)).ToList(),
+                          StringComparer.OrdinalIgnoreCase);
+
+        foreach (var u in users)
+            if (byUser.TryGetValue(u.UserName, out var teams)) u.Teams = teams;
+
+        return users;
     }
 
     // ------------------------------------------------------------
-    //  กำหนด / เปลี่ยน / เอาออกจาก Team  (teamId = null → ไม่มี Team)
+    //  กำหนด Team ของ user (แทนที่ทั้งชุด) — ว่าง = ไม่มี Team
     // ------------------------------------------------------------
-    public async Task<bool> SetUserTeamAsync(string userName, int? teamId)
+    public async Task<bool> SetUserTeamsAsync(string userName, IEnumerable<int> teamIds, string? by)
     {
         await using var db = await _factory.CreateDbContextAsync();
 
-        if (teamId != null && !await db.EngTeamMasters.AnyAsync(t => t.TeamId == teamId))
-            return false;
+        var wanted = teamIds.Distinct().ToList();
 
-        var rows = await db.SysUserMasters
-            .Where(u => u.UserName == userName)
-            .ExecuteUpdateAsync(s => s.SetProperty(u => u.EngTeamId, teamId));
+        // ทุก Team ที่เลือกต้องยังมีอยู่ (ตาราง Team เล็ก — เช็คในหน่วยความจำ
+        // เลี่ยง Contains(list) ที่ EF9 แปลเป็น OPENJSON ซึ่งต้องใช้ compat level 130+)
+        var allIds = (await db.EngTeamMasters.Select(t => t.TeamId).ToListAsync()).ToHashSet();
+        if (wanted.Any(id => !allIds.Contains(id))) return false;
 
-        return rows > 0;
+        var current = await db.EngTeamMembers
+            .Where(m => m.UserName == userName)
+            .ToListAsync();
+
+        db.EngTeamMembers.RemoveRange(current.Where(c => !wanted.Contains(c.TeamId)));
+
+        var now = DateTime.Now;
+        foreach (var id in wanted.Where(id => !current.Any(c => c.TeamId == id)))
+        {
+            db.EngTeamMembers.Add(new EngTeamMember
+            {
+                UserName = userName,
+                TeamId = id,
+                CreatedDate = now,
+                CreatedBy = by
+            });
+        }
+
+        await db.SaveChangesAsync();
+        return true;
     }
 
     // ------------------------------------------------------------
@@ -82,7 +114,11 @@ public class EngTeamService
             {
                 TeamId = t.TeamId,
                 TeamName = t.TeamName,
-                MemberCount = db.SysUserMasters.Count(u => u.EngTeamId == t.TeamId && u.IsActive == ACTIVE)
+                MemberCount = (
+                    from m in db.EngTeamMembers
+                    join u in db.SysUserMasters on m.UserName equals u.UserName
+                    where m.TeamId == t.TeamId && u.IsActive == ACTIVE
+                    select m).Count()
             })
             .ToListAsync();
     }
@@ -129,15 +165,16 @@ public class EngTeamService
         return (true, "แก้ไขชื่อ Team แล้ว");
     }
 
-    // ลบ Team: เอาสมาชิกออกจาก Team ก่อน (eng_team_id = NULL) แล้วลบ — ทำใน transaction เดียว
+    // ลบ Team: ลบสมาชิกของ Team นั้นก่อน แล้วลบ Team — ทำใน transaction เดียว
+    // (สมาชิกยังอยู่ใน Team อื่นได้ตามปกติ)
     public async Task<(bool Ok, string Message)> DeleteTeamAsync(int teamId)
     {
         await using var db = await _factory.CreateDbContextAsync();
         await using var tx = await db.Database.BeginTransactionAsync();
 
-        var cleared = await db.SysUserMasters
-            .Where(u => u.EngTeamId == teamId)
-            .ExecuteUpdateAsync(s => s.SetProperty(u => u.EngTeamId, (int?)null));
+        var removed = await db.EngTeamMembers
+            .Where(m => m.TeamId == teamId)
+            .ExecuteDeleteAsync();
 
         var deleted = await db.EngTeamMasters
             .Where(t => t.TeamId == teamId)
@@ -150,13 +187,15 @@ public class EngTeamService
         }
 
         await tx.CommitAsync();
-        return (true, cleared > 0 ? $"ลบ Team แล้ว (เอาสมาชิกออก {cleared} คน)" : "ลบ Team แล้ว");
+        return (true, removed > 0 ? $"ลบ Team แล้ว (เอาสมาชิกออก {removed} คน)" : "ลบ Team แล้ว");
     }
 }
 
 // ============================================================
 //  DTOs
 // ============================================================
+public record TeamRef(int TeamId, string TeamName);
+
 public class EngMemberDto
 {
     public string UserName { get; set; } = "";
@@ -169,8 +208,8 @@ public class EngMemberDto
                              : DeptCode == EngTeamService.DEPT_ENG4 ? "ENG4" : DeptCode;
     public string Ext { get; set; } = "";
     public string Position { get; set; } = "";
-    public int? TeamId { get; set; }
-    public string? TeamName { get; set; }
+    public List<TeamRef> Teams { get; set; } = new();
+    public bool HasTeam => Teams.Count > 0;
 }
 
 public class EngTeamDto
