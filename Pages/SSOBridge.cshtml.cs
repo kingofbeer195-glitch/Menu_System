@@ -17,19 +17,24 @@ public class SSOBridgeModel(SharedSessionService sharedSession,
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
         var ip = httpCtx.HttpContext?.Connection.RemoteIpAddress?.ToString();
 
-        // เช็คว่ามี SHARED_SID cookie อยู่แล้วไหม และยัง valid อยู่ไหม
-        var existingSid = Request.Cookies["SHARED_SID"];
+        // ใช้ session ตอน Login (claim) ก่อน แล้วค่อยดู cookie
+        // (ถ้าสร้างใหม่ CreateSessionAsync จะปิด session เดิมของ user → ENG4 โดนเตะออก)
+        var existingSid = User.FindFirst("SharedSessionId")?.Value
+                          ?? Request.Cookies[SharedSessionService.CookieName];
         string sid = "";
+        DateTimeOffset? persistentUntil = null;
         var empId = User.FindFirst("EmpId")?.Value ?? "";
 
         if (!string.IsNullOrEmpty(existingSid))
         {
-            // ตรวจสอบว่า session ยังใช้งานได้
-            var existing = await sharedSession.ValidateSessionAsync(existingSid);
+            // ตรวจสอบ + ต่อเวลา session
+            var existing = await sharedSession.TouchAsync(existingSid);
             if (existing != null && existing.UserId == userId)
             {
                 // ใช้ session เดิม ไม่ต้องสร้างใหม่
                 sid = existingSid;
+                if (existing.IsLongLived)
+                    persistentUntil = new DateTimeOffset(existing.ExpiresAt);
             }
         }
 
@@ -88,15 +93,8 @@ public class SSOBridgeModel(SharedSessionService sharedSession,
             sid = await sharedSession.CreateSessionAsync(dto);
         }
 
-        // Set/refresh cookie
-        Response.Cookies.Append("SHARED_SID", sid, new CookieOptions
-        {
-            HttpOnly = false,
-            SameSite = SameSiteMode.Lax,
-            Path = "/",
-            Expires = DateTimeOffset.Now.AddHours(2),
-            IsEssential = true
-        });
+        // Set/refresh cookie (session cookie — อายุจริงอยู่ที่ SharedSessions)
+        SharedSessionService.AppendSidCookie(Response, sid, persistentUntil);
 
         // ใน OnGetAsync — แก้ TargetUrl        
         var baseTarget = string.IsNullOrWhiteSpace(returnUrl)
@@ -122,4 +120,4 @@ public class SSOBridgeModel(SharedSessionService sharedSession,
 
         return Page();
     }
-}
+}

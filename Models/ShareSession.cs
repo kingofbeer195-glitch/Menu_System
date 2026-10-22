@@ -124,4 +124,11 @@ public class SharedSession
 
     [Column("Admin")]
     public bool? Admin { get; set; }
-}
+
+    // Session timeout (ดู Database/session_timeout.sql)
+    [Column("last_activity")]
+    public DateTime? LastActivity { get; set; }
+
+    [Column("absolute_expires_at")]
+    public DateTime? AbsoluteExpiresAt { get; set; }
+}

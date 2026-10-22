@@ -1,4 +1,5 @@
 ﻿@inject IWebHostEnvironment Env
+@inject Microsoft.Extensions.Options.IOptions<SystemAll.Services.SessionTimeoutOptions> TimeoutOpt
 
 <!DOCTYPE html>
 <html lang="th">
@@ -33,6 +34,26 @@
 
     <script src="_framework/blazor.web.js"></script>
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+
+    @* Session timeout: popup เตือน / keepalive / logout เมื่อไม่มีการใช้งาน
+       URL เป็น relative → อิง <base href> ทั้ง Development และ Production *@
+    @if (HttpContext?.User.Identity?.IsAuthenticated == true)
+    {
+        <script src="js/session-timeout.js"
+                data-idle-minutes="@(_isMonitor ? 0 : TimeoutOpt.Value.IdleMinutes)"
+                data-warn-minutes="@TimeoutOpt.Value.WarnMinutes"
+                data-ping-minutes="@TimeoutOpt.Value.PingMinutes"
+                data-check-seconds="@TimeoutOpt.Value.CheckSeconds"
+                data-keepalive-url="api/session/keepalive"
+                data-logout-url="Logout?reason=timeout"></script>
+    }
 </body>
 
 </html>
+
+@code {
+    [CascadingParameter] private HttpContext? HttpContext { get; set; }
+
+    // จอ Monitor ไม่ต้อง idle-logout
+    private bool _isMonitor => TimeoutOpt.Value.IsMonitorAccount(HttpContext?.User.Identity?.Name);
+}
