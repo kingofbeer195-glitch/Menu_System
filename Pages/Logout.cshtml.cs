@@ -15,7 +15,7 @@ public class LogoutModel : PageModel
         _sharedSession = sharedSession;
     }
 
-    public async Task<IActionResult> OnGetAsync()
+    public async Task<IActionResult> OnGetAsync([FromQuery] string? reason = null)
     {
         var sharedSessionId = HttpContext.Session.GetString("SharedSessionId")
                            ?? Request.Cookies["SHARED_SID"];
@@ -52,10 +52,14 @@ public class LogoutModel : PageModel
             ? "/ENG4_System/Login"
             : "/Login";
 
+        // timeout จาก session-timeout.js → ส่งต่อไปแสดงข้อความที่หน้า Login
+        if (string.Equals(reason, "timeout", StringComparison.OrdinalIgnoreCase))
+            loginPath += "?reason=timeout";
+
         //Redirect ผ่าน LogoutBridge ของระบบเก่าก่อน แล้วค่อยไป Login
         var logoutBridgeUrl = env.IsProduction()
             ? $"http://cptsvs552.canon-pt.co.th/user_master/LogoutBridge.aspx" +
-              $"?returnUrl=http://cptsvs552.canon-pt.co.th{loginPath}"
+              $"?returnUrl={Uri.EscapeDataString("http://cptsvs552.canon-pt.co.th" + loginPath)}"
             : loginPath;
         return Redirect(logoutBridgeUrl);
 

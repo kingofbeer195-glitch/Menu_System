@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authentication.Cookies;
+﻿using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 //using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor.Services;
@@ -21,6 +22,9 @@ builder.Services.AddRazorPages();
 // MudBlazor
 builder.Services.AddMudServices();
 
+// Session Timeout (idle / absolute / keepalive) — ดู appsettings.json → "SessionTimeout"
+builder.Services.Configure<SessionTimeoutOptions>(builder.Configuration.GetSection("SessionTimeout"));
+
 // Cookie Authentication (สำหรับ Login/Logout)
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
@@ -35,6 +39,36 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.Cookie.HttpOnly = true;
         options.Cookie.SameSite = SameSiteMode.Lax;
         options.Cookie.IsEssential = true;
+
+        // ให้ SharedSessions เป็นตัวตัดสินจริง: ทุก request เช็ค + ต่อเวลา session
+        // ถ้า session หมด/ถูก logout (เช่น login ซ้ำจากเครื่องอื่น) → เตะออกไป Login
+        options.Events = new CookieAuthenticationEvents
+        {
+            OnValidatePrincipal = async ctx =>
+            {
+                var sid = ctx.Principal?.FindFirst("SharedSessionId")?.Value;
+                var svc = ctx.HttpContext.RequestServices.GetRequiredService<SharedSessionService>();
+
+                SessionStatus? status;
+                try
+                {
+                    status = await svc.TouchAsync(sid);
+                }
+                catch (Exception ex)
+                {
+                    // DB มีปัญหาชั่วคราว: ไม่เตะผู้ใช้ออก
+                    ctx.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>()
+                        .LogWarning(ex, "SharedSession touch failed");
+                    return;
+                }
+
+                if (status is null)
+                {
+                    ctx.RejectPrincipal();
+                    await ctx.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                }
+            }
+        };
     });
 builder.Services.AddAuthorization();
 builder.Services.AddCascadingAuthenticationState();
@@ -107,6 +141,33 @@ app.MapRazorPages();
 // Blazor Components
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+
+// ===== Session Keepalive API (เรียกจาก wwwroot/js/session-timeout.js) =====
+//   POST = มีการใช้งาน → ต่อเวลา
+//   GET  = เช็คอย่างเดียว (ถูก logout จากที่อื่นหรือยัง)
+app.MapMethods("/api/session/keepalive", new[] { "GET", "POST" }, async (
+    HttpContext ctx, SharedSessionService svc, ILogger<Program> log) =>
+{
+    ctx.Response.Headers.CacheControl = "no-store";
+
+    var sid = ctx.User.FindFirst("SharedSessionId")?.Value
+              ?? ctx.Request.Cookies[SharedSessionService.CookieName];
+    try
+    {
+        var status = HttpMethods.IsPost(ctx.Request.Method)
+            ? await svc.TouchAsync(sid)
+            : await svc.CheckAsync(sid);
+
+        return status is null
+            ? Results.Json(new { ok = false }, statusCode: StatusCodes.Status401Unauthorized)
+            : Results.Json(new { ok = true });
+    }
+    catch (Exception ex)
+    {
+        log.LogWarning(ex, "Session keepalive failed");
+        return Results.Json(new { ok = true, warn = "db" });   // DB มีปัญหา ไม่เตะผู้ใช้ออก
+    }
+});
 
 // ===== Forgot Password API =====
 app.MapPost("/api/forgot/request", async (

@@ -27,10 +27,14 @@ public class LoginModel : PageModel
     [BindProperty] public string Password { get; set; } = "";
     public string ErrorMessage { get; set; } = "";
 
-    public IActionResult OnGet()
+    public IActionResult OnGet([FromQuery] string? reason = null)
     {
         if (User.Identity?.IsAuthenticated == true)
             return Redirect("~/");
+
+        if (string.Equals(reason, "timeout", StringComparison.OrdinalIgnoreCase))
+            ErrorMessage = "Session หมดอายุเนื่องจากไม่มีการใช้งาน กรุณาเข้าสู่ระบบใหม่";
+
         return Page();
     }
 
@@ -66,12 +70,13 @@ public class LoginModel : PageModel
             return Page();
         }
 
-        // บัญชีสำหรับจอ Monitor : session อายุยาว
-        const string MonitorAccount = "Admin";
-        var isMonitorAccount = string.Equals(user.UserName?.Trim(), MonitorAccount, StringComparison.OrdinalIgnoreCase);
+        // บัญชีสำหรับจอ Monitor : session อายุยาว (ไม่ timeout)
+        // บัญชีปกติ : sliding ตาม SessionTimeout (idle 60 นาที / สูงสุด 12 ชม.) — SharedSessions เป็นตัวตัดสิน
+        var timeout = _sharedSession.Options;
+        var isMonitorAccount = timeout.IsMonitorAccount(user.UserName);
 
-        var sessionLifetime = isMonitorAccount ? TimeSpan.FromDays(365) : TimeSpan.FromHours(1);
-        var expiresAt = DateTimeOffset.UtcNow.Add(sessionLifetime);
+        TimeSpan? fixedLifetime = isMonitorAccount ? TimeSpan.FromDays(timeout.MonitorLifetimeDays) : null;
+        var authExpiresAt = DateTimeOffset.UtcNow.Add(fixedLifetime ?? TimeSpan.FromHours(timeout.AbsoluteHours));
 
         // 2) สร้าง FullName / ShortName จาก fname + lname
         var fname = user.FName?.Trim() ?? "";
@@ -170,21 +175,15 @@ public class LoginModel : PageModel
             PermDevelopSystem = user.DevelopSystem == 1,
             Admin = user.Admin == 1,
             IpAddress = ipAddress,
-            Lifetime = sessionLifetime          // ← เพิ่ม
+            Lifetime = fixedLifetime            // null = sliding
         };
 
         var sharedSessionId = await _sharedSession.CreateSessionAsync(dto);
 
         // 7) Set SHARED_SID cookie (สำหรับ Web Forms .NET 4.0)
-        Response.Cookies.Append("SHARED_SID", sharedSessionId, new CookieOptions
-        {
-            Path = "/",
-            HttpOnly = false,
-            SameSite = SameSiteMode.Lax,
-            //Expires = DateTimeOffset.Now.AddHours(1),
-            Expires = expiresAt,                // ← เดิม DateTimeOffset.Now.AddHours(1)
-            IsEssential = true
-        });
+        //    ปกติเป็น session cookie — อายุจริงอยู่ที่ SharedSessions.expires_at
+        SharedSessionService.AppendSidCookie(Response, sharedSessionId,
+            isMonitorAccount ? authExpiresAt : null);
 
         // 8) ASP.NET Core Session
         HttpContext.Session.SetString("UserId", user.UserName);
@@ -243,7 +242,7 @@ public class LoginModel : PageModel
             new AuthenticationProperties
             {
                 IsPersistent = isMonitorAccount,   // ← Admin: อยู่รอดแม้ปิด browser
-                ExpiresUtc = expiresAt,
+                ExpiresUtc = authExpiresAt,     // เพดาน; ตัดสินจริงด้วย OnValidatePrincipal → SharedSessions
                 AllowRefresh = true
             });
 
